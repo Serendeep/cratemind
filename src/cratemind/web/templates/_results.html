@@ -25,7 +25,7 @@
       {% elif t.status == "sorted" %}<div class="gen un">unsorted</div>
       {% else %}<div class="gen">—</div>{% endif %}
       {% if t.source == "spotiflac" %}<div class="src"><span class="ok">SpotiFLAC</span><small>lossless</small></div>
-      {% elif t.source == "spotdl" %}<div class="src"><span class="fb">spotdl</span><small>fallback</small></div>
+      {% elif t.source == "spotdl" %}<div class="src"><span class="fb">spotdl</span><small>lossy</small></div>
       {% else %}<div class="src"><small>—</small></div>{% endif %}
     </div>
     {% endfor %}
