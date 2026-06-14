@@ -33,10 +33,13 @@ def run_crate(
     overrides: dict[str, TrackEntry] | None = None,
 ) -> tuple[str, list[Track]]:
     backend_name, tracks = fetch(playlist_url, settings)
+    # Already-sorted tracks keep their analysis (bpm/genre/key) from a prior run;
+    # read it from the store rather than the bare file so the UI stays complete.
+    stored = {t.spotify_id: t for t in store.tracks(playlist_url)}
     results: list[Track] = []
     for track in tracks:
         if store.is_done(playlist_url, track.spotify_id):
-            already = track.update(status="sorted")
+            already = stored.get(track.spotify_id) or track.update(status="sorted")
             results.append(already)
             if on_update:
                 on_update(already)

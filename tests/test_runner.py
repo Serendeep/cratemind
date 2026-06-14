@@ -42,6 +42,25 @@ def test_run_skips_already_sorted_track():
     assert called == []  # resume skipped re-analysis
 
 
+def test_resume_returns_stored_analysis_not_blank():
+    store = CrateStore()
+    store.upsert_track(
+        "u",
+        Track(
+            spotify_id="1", title="T", artist="A",
+            genre="techno", bpm=150, bpm_bucket="144-151", key="6A", status="sorted",
+        ),
+    )
+
+    def fetch(_url, _settings):
+        return "spotdl", [Track(spotify_id="1", title="T", artist="A")]  # bare re-download
+
+    _name, results = run_crate("u", Settings(), store, fetch=fetch, process=lambda t, _s: t)
+    assert results[0].bpm == 150
+    assert results[0].genre == "techno"
+    assert results[0].key == "6A"  # read from the store, not the bare file
+
+
 def test_run_emits_progress_updates():
     store = CrateStore()
     events: list[str] = []

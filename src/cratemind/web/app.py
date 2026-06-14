@@ -56,13 +56,15 @@ def index(request: Request) -> HTMLResponse:
 
 
 def _results(request: Request, job) -> HTMLResponse:
+    with job.lock:  # job.tracks is replaced wholesale by the worker thread
+        tracks = list(job.tracks)
     return templates.TemplateResponse(
         request,
         "_results.html",
         {
             "job": job,
-            "tracks": ordered_tracks(job.tracks),
-            "summary": summarize(job.tracks),
+            "tracks": ordered_tracks(tracks),
+            "summary": summarize(tracks),
         },
     )
 
@@ -132,7 +134,9 @@ def export_crate(job_id: str) -> Response:
     job = jobs.get(job_id)
     if job is None:
         return Response("run not found", status_code=404)
-    manifest = CrateManifest.from_tracks(job.playlist_url, job.tracks)
+    with job.lock:
+        tracks = list(job.tracks)
+    manifest = CrateManifest.from_tracks(job.playlist_url, tracks)
     return Response(
         manifest.to_json(),
         media_type="application/json",
@@ -145,7 +149,9 @@ def share_run(job_id: str) -> HTMLResponse:
     job = jobs.get(job_id)
     if job is None:
         return HTMLResponse("<div class='err'>run not found</div>", status_code=404)
-    manifest = CrateManifest.from_tracks(job.playlist_url, job.tracks)
+    with job.lock:
+        tracks = list(job.tracks)
+    manifest = CrateManifest.from_tracks(job.playlist_url, tracks)
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
         _ = handle.write(manifest.to_json())
         path = Path(handle.name)
