@@ -59,7 +59,9 @@ def track_from_file(path: Path, *, source: str) -> Track:
         artist=artist,
         genre=canonicalize(tags.get("genre")),
         source=source,
-        lossless=is_lossless(path),
+        # Only SpotiFLAC delivers true lossless. A spotdl ".flac" is a lossy
+        # YouTube source in a lossless container, so it doesn't count.
+        lossless=is_lossless(path) and source == "spotiflac",
         file_path=Path(path),
         status="downloading",
     )
