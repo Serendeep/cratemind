@@ -44,10 +44,10 @@ def build_spotdl_command(playlist_url: str, out_dir: Path, audio_format: str) ->
 
 
 def build_spotiflac_command(playlist_url: str, out_dir: Path) -> list[str]:
-    # Override point for the user's environment (SpotiFLAC packaging varies).
-    # CRATEMIND_SPOTIFLAC_CMD may name a different executable or wrapper.
+    # SpotiFLAC CLI is positional: `spotiflac <url> <output_dir> [--service ...]`.
+    # CRATEMIND_SPOTIFLAC_CMD overrides the executable name/path if needed.
     exe = os.environ.get("CRATEMIND_SPOTIFLAC_CMD", "spotiflac")
-    return [exe, playlist_url, "--output", str(out_dir)]
+    return [exe, playlist_url, str(out_dir)]
 
 
 def _run(command: list[str]) -> None:

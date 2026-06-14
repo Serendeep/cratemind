@@ -110,11 +110,18 @@ a free host (catbox.moe or 0x0.st) to get a link you can pass around.
 
 ## Lossless downloads
 
-For true lossless FLAC, cratemind can use
-[SpotiFLAC](https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version), which
-pulls audio from lossless sources. If it isn't installed, cratemind quietly falls
-back to spotdl. Point cratemind at your SpotiFLAC command with an environment
-variable if it isn't named `spotiflac` on your system:
+For true lossless FLAC, cratemind uses
+[SpotiFLAC](https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version), which pulls
+audio from Tidal/Qobuz/Amazon. The setup script installs it; to add it by hand:
+
+```
+uv tool install SpotiFLAC
+```
+
+That gives you a `spotiflac` command, and cratemind calls it as
+`spotiflac <playlist-url> <output-dir>`. If it isn't installed, cratemind falls
+back to spotdl automatically. If your install exposes it under a different name
+or path, point cratemind at it:
 
 ```
 CRATEMIND_SPOTIFLAC_CMD=/path/to/spotiflac uv run cratemind

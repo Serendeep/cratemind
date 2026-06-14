@@ -38,6 +38,11 @@ def test_build_spotdl_command_shape():
     assert "--output" in cmd and "/out" in cmd
 
 
+def test_build_spotiflac_command_is_positional():
+    # SpotiFLAC CLI: `spotiflac <url> <output_dir>`
+    assert build_spotiflac_command(URL, Path("/out")) == ["spotiflac", URL, "/out"]
+
+
 def test_build_spotiflac_command_honours_env_override(monkeypatch):
     monkeypatch.setenv("CRATEMIND_SPOTIFLAC_CMD", "my-flac")
     cmd = build_spotiflac_command(URL, Path("/out"))
