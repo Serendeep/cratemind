@@ -5,9 +5,13 @@
 Paste a Spotify playlist, get a folder of tracks sorted by genre and tempo.
 
 cratemind downloads each song, works out its BPM and genre, and files it into
-folders like `House/120-127bpm/`. It grabs lossless FLAC when it can and falls
-back to a normal download when it can't. Everything runs on your own computer.
-No website, no account, nothing uploaded.
+folders like `House/120-127bpm/`. Everything runs on your own computer. No
+website, no account, nothing uploaded.
+
+<p align="center">
+  <img src="docs/images/cratemind.png" width="760"
+       alt="cratemind downloading a Spotify playlist and sorting it into folders by genre and tempo, with BPM and Camelot key shown per track">
+</p>
 
 ---
 
