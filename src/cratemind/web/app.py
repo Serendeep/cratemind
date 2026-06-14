@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from .. import __version__
 from ..config import DEFAULT_TEMPLATE, Settings
 from ..manifest import CrateManifest
+from ..prefs import load_settings, save_settings
 from ..share import share_crate
 from .jobs import JobManager
 from .view import ordered_tracks, summarize
@@ -47,7 +48,7 @@ def index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"version": __version__, "defaults": Settings()},
+        {"version": __version__, "defaults": load_settings()},
     )
 
 
@@ -82,6 +83,7 @@ def start_run(
         octave_high=octave_high,
         bucket_width=bucket_width,
     )
+    save_settings(settings)
     job = jobs.start(playlist_url, settings)
     return _results(request, job)
 
@@ -106,6 +108,7 @@ async def import_crate(
         audio_format=audio_format,
         folder_template=folder_template,
     )
+    save_settings(settings)
     overrides = {entry.spotify_id: entry for entry in manifest.tracks}
     job = jobs.start(manifest.playlist_url, settings, runner_kwargs={"overrides": overrides})
     return _results(request, job)
