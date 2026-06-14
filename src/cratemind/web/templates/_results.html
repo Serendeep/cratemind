@@ -1,0 +1,52 @@
+{% if job.status == "error" %}
+<div class="err">Couldn't run: {{ job.error }}. Make sure <span class="mono">spotdl</span> and <span class="mono">ffmpeg</span> are installed — see the README.</div>
+{% elif not tracks %}
+<div class="empty">Starting up… resolving the playlist.</div>
+{% else %}
+<div id="run"{% if job.status == "running" %} hx-get="/runs/{{ job.id }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  <div class="label">// {{ "running" if job.status == "running" else "crate" }}</div>
+  <div class="runline">
+    <span class="nm2 mono">{{ job.playlist_url }}</span>
+    <span class="pr"><b>{{ summary.sorted }}</b> sorted · {{ summary.working }} working · {{ summary.total }} total{% if job.backend %} · {{ job.backend }}{% endif %}</span>
+  </div>
+  <div class="tbl">
+    <div class="head">
+      <div>status</div><div>track</div><div style="text-align:right">bpm</div><div>genre</div><div style="text-align:right">source</div>
+    </div>
+    {% for t in tracks %}
+    {% set cls = "sorted" if t.status == "sorted" else ("failed" if t.status == "failed" else ("queued" if t.status == "queued" else "work")) %}
+    <div class="tr{{ ' queued' if t.status == 'queued' else '' }}">
+      <div class="st {{ cls }}"><span class="d"></span>{{ t.status }}</div>
+      <div class="nm"><div class="t">{{ t.title }}</div><div class="a">{{ t.artist }}</div></div>
+      {% if t.bpm %}<div class="bpm"><b>{{ t.bpm }}</b><small>{{ t.bpm_bucket }}</small></div>
+      {% else %}<div class="bpm none"><b>—</b><small>bpm</small></div>{% endif %}
+      {% if t.genre %}<div class="gen">{{ t.genre }}</div>
+      {% elif t.status == "sorted" %}<div class="gen un">unsorted</div>
+      {% else %}<div class="gen">—</div>{% endif %}
+      {% if t.source == "spotiflac" %}<div class="src"><span class="ok">SpotiFLAC</span><small>lossless</small></div>
+      {% elif t.source == "spotdl" %}<div class="src"><span class="fb">spotdl</span><small>fallback</small></div>
+      {% else %}<div class="src"><small>—</small></div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if job.status != "running" %}
+  <div class="label">// crate summary</div>
+  <div class="stats">
+    <div class="stat"><div class="v">{{ summary.total }}</div><div class="k">tracks</div></div>
+    <div class="stat"><div class="v acc">{{ summary.lossless_pct }}%</div><div class="k">lossless</div></div>
+    <div class="stat"><div class="v">{{ summary.genres }}</div><div class="k">genres</div></div>
+    <div class="stat"><div class="v">{{ summary.unsorted }}</div><div class="k">unsorted</div></div>
+    <div class="stat"><div class="v">{{ summary.failed }}</div><div class="k">failed</div></div>
+  </div>
+  {% if summary.bins %}
+  <div class="bins">
+    <div class="cap">tempo bins</div>
+    {% for label, count, pct in summary.bins %}
+    <div class="binrow"><span class="l">{{ label }}</span><div class="b"><i style="width:{{ pct }}%"></i></div><span class="n">{{ count }}</span></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endif %}

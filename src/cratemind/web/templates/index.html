@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cratemind</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/htmx.org@2.0.3"></script>
+<style>
+:root{
+  --bg:#0c0d0f;--panel:#121317;--panel-2:#17191e;--inset:#0a0b0d;
+  --line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.045);
+  --t1:#e8e8ea;--t2:#989aa1;--t3:#646570;--t4:#474853;
+  --acc:#7fb98a;--acc-dim:rgba(127,185,138,.12);--warn:#c4a06a;--r:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t1);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:760px;margin:0 auto;padding:0 24px;width:100%}
+main.page{flex:1 0 auto}
+header{padding:30px 0 22px;border-bottom:1px solid var(--line-2)}
+.top{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:26px;height:26px;border:1.5px solid var(--t2);border-radius:5px;position:relative;flex:none}
+.logo::before{content:"";position:absolute;inset:6px;border:1.5px solid var(--t2);border-radius:50%}
+.logo::after{content:"";position:absolute;left:11.5px;top:11.5px;width:3px;height:3px;border-radius:50%;background:var(--acc)}
+.brand h1{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.brand h1 span{color:var(--t3);font-weight:400}
+.top .meta{font-size:12px;color:var(--t3)}
+.lede{margin-top:14px;color:var(--t2);font-size:13px;max-width:62ch}
+.label{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:30px 0 12px}
+.row{display:flex;gap:8px}
+input,select{background:var(--inset);border:1px solid var(--line);border-radius:var(--r);color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:13px;padding:11px 12px;outline:none;width:100%}
+input::placeholder{color:var(--t4)}
+input:focus,select:focus{border-color:rgba(127,185,138,.45)}
+label.f{display:block;font-size:11px;color:var(--t3);margin:0 0 6px}
+.btn{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;border-radius:var(--r);border:1px solid var(--line);background:var(--panel-2);color:var(--t1);padding:11px 16px;cursor:pointer;white-space:nowrap;transition:background .16s,border-color .16s,color .16s}
+.btn:hover{border-color:var(--line);background:#1c1e24}
+.btn.go{background:var(--acc);color:#0c0d0f;border-color:var(--acc);font-weight:600}
+.btn.go:hover{background:#8fc79a}
+.btn.go:active{transform:translateY(1px)}
+.btn.sm{padding:7px 12px;font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr 200px;gap:14px;margin-top:14px}
+.grid1{margin-top:14px}
+.tokens{margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--t4)}
+.tokens b{color:var(--t2);font-weight:400}
+details{margin-top:14px;border-top:1px solid var(--line-2);padding-top:12px}
+summary{cursor:pointer;list-style:none;font-size:12px;color:var(--t2);display:flex;align-items:center;gap:7px}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"+";font-family:'JetBrains Mono',monospace;color:var(--t3)}
+details[open] summary::before{content:"–"}
+.adv{display:flex;gap:24px;margin-top:13px;flex-wrap:wrap}
+.adv .f{font-size:11px;color:var(--t3);margin-bottom:6px}
+.adv .pair{display:flex;align-items:center;gap:6px}
+.adv input{width:62px;text-align:center}
+.adv .pair span{color:var(--t4);font-family:'JetBrains Mono',monospace;font-size:12px}
+.subrow{display:flex;align-items:center;gap:14px;margin-top:18px}
+.subrow .hint{color:var(--t4);font-size:12px}
+.empty{margin-top:30px;border:1px dashed var(--line);border-radius:var(--r);padding:26px;text-align:center;color:var(--t4);font-size:13px}
+.tbl{border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tbl .head,.tbl .tr{display:grid;grid-template-columns:104px 1fr 78px 116px 104px;align-items:center;gap:14px;padding:10px 14px}
+.tbl .head{background:var(--panel);border-bottom:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--t4)}
+.tbl .tr{border-bottom:1px solid var(--line-2)}
+.tbl .tr:last-child{border-bottom:0}
+.tr.queued{color:var(--t3)}
+.st{font-family:'JetBrains Mono',monospace;font-size:11.5px;display:flex;align-items:center;gap:8px}
+.st .d{width:6px;height:6px;border-radius:50%;background:var(--t4);flex:none}
+.st.sorted{color:var(--acc)}.st.sorted .d{background:var(--acc)}
+.st.work{color:var(--t1)}.st.work .d{background:var(--t1);animation:pulse 1.3s ease-in-out infinite}
+.st.queued{color:var(--t4)}
+.st.failed{color:var(--warn)}.st.failed .d{background:var(--warn)}
+.nm .t{color:var(--t1);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm .a{color:var(--t3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bpm{font-family:'JetBrains Mono',monospace;text-align:right}
+.bpm b{font-size:14px;font-weight:600;color:var(--t1)}
+.bpm small{display:block;font-size:10px;color:var(--t4)}
+.bpm.none b{color:var(--t4)}
+.gen{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t2)}
+.gen.un{color:var(--warn)}
+.src{font-family:'JetBrains Mono',monospace;font-size:11px;text-align:right;color:var(--t3)}
+.src .ok{color:var(--acc)}.src .fb{color:var(--warn)}
+.src small{display:block;font-size:9.5px;color:var(--t4)}
+.runline{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.runline .nm2{font-size:14px;font-weight:500}
+.runline .pr{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3)}
+.runline .pr b{color:var(--acc)}
+.err{border:1px solid rgba(196,160,106,.3);background:rgba(196,160,106,.06);color:var(--warn);border-radius:var(--r);padding:14px;font-size:13px}
+.stats{display:flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.stat{flex:1;padding:14px 16px;border-right:1px solid var(--line-2)}
+.stat:last-child{border-right:0}
+.stat .v{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600}
+.stat .v.acc{color:var(--acc)}
+.stat .k{font-size:11px;color:var(--t3);margin-top:2px}
+.bins{margin-top:14px;border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.bins .cap{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--t4);margin-bottom:14px}
+.binrow{display:grid;grid-template-columns:84px 1fr 28px;align-items:center;gap:12px;margin-bottom:9px}
+.binrow:last-child{margin-bottom:0}
+.binrow .l{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t2)}
+.binrow .b{height:6px;background:var(--inset);border-radius:3px;overflow:hidden}
+.binrow .b i{display:block;height:100%;background:var(--t2);border-radius:3px}
+.binrow .n{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);text-align:right}
+.share{display:flex;gap:10px;margin-top:14px;align-items:center;flex-wrap:wrap}
+footer{margin-top:36px;border-top:1px solid var(--line-2);padding:22px 0 44px}
+.fl{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.bmc{font-family:'Inter',sans-serif;font-size:12.5px;color:var(--t2);text-decoration:none;border:1px solid var(--line);border-radius:var(--r);padding:8px 13px;white-space:nowrap}
+.bmc:hover{color:var(--t1);border-color:var(--t3)}
+.disc{color:var(--t4);font-size:11px;line-height:1.65;max-width:540px}
+.disc b{color:var(--t3);font-weight:500}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main class="page wrap">
+  <header>
+    <div class="top">
+      <div class="brand">
+        <div class="logo"></div>
+        <h1>cratemind <span>/ playlist → sorted crate</span></h1>
+      </div>
+      <div class="meta mono">v{{ version }} · local</div>
+    </div>
+    <p class="lede">Download a Spotify playlist, detect each track's BPM and genre, and file it into folders — lossless where possible.</p>
+  </header>
+
+  <div class="label">// new dig</div>
+  <form hx-post="/runs" hx-target="#results" hx-swap="innerHTML">
+    <div class="row">
+      <input type="text" name="playlist_url" placeholder="https://open.spotify.com/playlist/…" required>
+      <button class="btn go" type="submit">Run</button>
+    </div>
+    <div class="grid2">
+      <div>
+        <label class="f">output folder</label>
+        <input type="text" name="output_dir" value="{{ defaults.output_dir }}">
+      </div>
+      <div>
+        <label class="f">format</label>
+        <select name="audio_format">
+          <option value="flac" selected>FLAC</option>
+          <option value="mp3">MP3</option>
+          <option value="m4a">M4A</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid1">
+      <label class="f">folder template</label>
+      <input type="text" name="folder_template" value="{{ defaults.folder_template }}">
+      <div class="tokens">tokens: <b>{genre}</b> <b>{bpm_bucket}</b> <b>{bpm}</b> <b>{artist}</b> <b>{year}</b></div>
+    </div>
+    <details>
+      <summary>advanced</summary>
+      <div class="adv">
+        <div>
+          <div class="f">bpm octave window</div>
+          <div class="pair">
+            <input type="text" name="octave_low" value="{{ defaults.octave_low }}">
+            <span>—</span>
+            <input type="text" name="octave_high" value="{{ defaults.octave_high }}">
+            <span>bpm</span>
+          </div>
+        </div>
+        <div>
+          <div class="f">bucket width</div>
+          <div class="pair"><input type="text" name="bucket_width" value="{{ defaults.bucket_width }}"><span>bpm bands</span></div>
+        </div>
+      </div>
+    </details>
+  </form>
+
+  <div class="subrow">
+    <span class="hint">import a shared crate.json to re-create it — same tracks, skip re-analysis (coming soon)</span>
+  </div>
+
+  <div id="results">
+    <div class="empty">Paste a playlist link above and hit Run — tracks will appear here as they download, analyze, and sort.</div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap fl">
+    <a class="bmc" href="https://buymeacoffee.com/serendeep">Buy me a coffee ↗</a>
+    <p class="disc"><b>cratemind</b> is a personal tool for organizing music you are entitled to use. You are solely responsible for complying with the terms of Spotify and any source service, and with copyright law in your jurisdiction. Not affiliated with Spotify, Tidal, or any provider. Provided as-is, without warranty. © 2026 serendeep · MIT.</p>
+  </div>
+</footer>
+</body>
+</html>
