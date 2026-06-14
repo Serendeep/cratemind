@@ -13,12 +13,51 @@ website, no account, nothing uploaded.
        alt="cratemind downloading a Spotify playlist and sorting it into folders by genre and tempo, with BPM and Camelot key shown per track">
 </p>
 
+## What it does
+
+- **Downloads a whole Spotify playlist** with spotdl, in the format you pick.
+- **Detects BPM and Camelot key** for every track — for tempo sorting and
+  harmonic mixing.
+- **Resolves the genre** and files each track into folders you template, like
+  `House/120-127bpm/`.
+- **Live progress in the browser** — and reloading the page reconnects to the run.
+- **Resumes instantly** — re-running a playlist skips anything already downloaded.
+- **Share a crate** as a small `crate.json` (the analysis, not the audio) and
+  re-import it to rebuild the same folders without re-analyzing.
+- **Runs entirely on your computer.** No website, no account, nothing uploaded.
+
 ---
 
-## What you need first
+## Get cratemind
 
-cratemind relies on three free tools. You install each one once. Pick your
-operating system and paste the commands into a terminal.
+Download the project as a ZIP from its GitHub page (the green **Code** button →
+**Download ZIP**) and unzip it, or clone it:
+
+```
+git clone https://github.com/Serendeep/cratemind.git
+cd cratemind
+```
+
+---
+
+## Setup (one command)
+
+From the cratemind folder, run the setup script for your system. It installs the
+tools cratemind needs (uv, ffmpeg, spotdl) and sets up the app, pointing you to a
+manual download for anything it can't install on its own:
+
+- macOS / Linux: `./setup.sh`
+- Windows (PowerShell): `./setup.ps1`
+
+Then jump to [Run it](#run-it). Prefer to install by hand? See
+[Manual setup](#manual-setup) below.
+
+---
+
+## Manual setup
+
+Only needed if the setup script missed something, or you'd rather do it yourself.
+cratemind relies on three free tools — install each once.
 
 **1. uv** — runs cratemind
 
@@ -43,34 +82,11 @@ operating system and paste the commands into a terminal.
 uv tool install spotdl
 ```
 
-That's it. (Lossless FLAC needs one more optional tool — see
-[Lossless downloads](#lossless-downloads). cratemind works fine without it.)
-
----
-
-## Get cratemind
-
-Download the project as a ZIP from its GitHub page (the green **Code** button →
-**Download ZIP**) and unzip it, or clone it:
+Then install cratemind's own dependencies:
 
 ```
-git clone https://github.com/Serendeep/cratemind.git
-cd cratemind
+uv sync
 ```
-
----
-
-## Easy setup (one command)
-
-From the cratemind folder, run the setup script for your system. It installs uv,
-ffmpeg, and spotdl (and points you to the manual download if it can't), then sets
-up the app:
-
-- macOS / Linux: `./setup.sh`
-- Windows (PowerShell): `./setup.ps1`
-
-Prefer to install by hand? The steps under "What you need first" are the manual
-version.
 
 ---
 
