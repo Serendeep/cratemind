@@ -32,8 +32,13 @@ def audio_files(directory: Path) -> set[Path]:
 
 def cache_dir(out_dir: Path) -> Path:
     """Persistent download cache. Keeping originals here lets the downloaders
-    skip what they've already fetched, so reruns don't re-download."""
-    return out_dir / ".cratemind-cache"
+    skip what they've already fetched, so reruns don't re-download.
+
+    The name has no leading dot on purpose: spotdl strips a leading dot from
+    output-path segments, which would make it write to a different folder than
+    cratemind watches.
+    """
+    return out_dir / "cratemind-cache"
 
 
 def build_spotdl_command(playlist_url: str, out_dir: Path, audio_format: str) -> list[str]:
@@ -83,8 +88,11 @@ class SpotiFlacBackend:
         cache.mkdir(parents=True, exist_ok=True)
         before = audio_files(cache)
         _run(build_spotiflac_command(playlist_url, cache))
-        fresh = audio_files(cache) - before
-        return [track_from_file(p, source=self.name) for p in sorted(fresh)]
+        after = audio_files(cache)
+        # Newly downloaded files; if nothing's new, everything was already cached
+        # (a rerun), so process what's there.
+        produced = (after - before) or after
+        return [track_from_file(p, source=self.name) for p in sorted(produced)]
 
 
 class SpotdlBackend:
@@ -101,8 +109,11 @@ class SpotdlBackend:
         cache.mkdir(parents=True, exist_ok=True)
         before = audio_files(cache)
         _run(build_spotdl_command(playlist_url, cache, self.audio_format))
-        fresh = audio_files(cache) - before
-        return [track_from_file(p, source=self.name) for p in sorted(fresh)]
+        after = audio_files(cache)
+        # Newly downloaded files; if nothing's new, everything was already cached
+        # (a rerun), so process what's there.
+        produced = (after - before) or after
+        return [track_from_file(p, source=self.name) for p in sorted(produced)]
 
 
 def select_backends(audio_format: str) -> list[DownloadBackend]:
