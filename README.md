@@ -54,6 +54,20 @@ cd cratemind
 
 ---
 
+## Easy setup (one command)
+
+From the cratemind folder, run the setup script for your system. It installs uv,
+ffmpeg, and spotdl (and points you to the manual download if it can't), then sets
+up the app:
+
+- macOS / Linux: `./setup.sh`
+- Windows (PowerShell): `./setup.ps1`
+
+Prefer to install by hand? The steps under "What you need first" are the manual
+version.
+
+---
+
 ## Run it
 
 From the cratemind folder:
@@ -157,6 +171,15 @@ Open an issue on the [GitHub Issues page](https://github.com/Serendeep/cratemind
 The more of that you include, the faster it gets fixed. For anything
 security-sensitive, please contact the maintainer privately instead of opening a
 public issue.
+
+---
+
+## A one-click app (coming soon)
+
+A bundled version with everything inside (no terminal, no setup) is planned for
+desktop. You can pre-order it for $50. The proceeds fund an Apple Developer
+license so the macOS build ships properly signed. Look for the pre-order link in
+the app footer, or [buy me a coffee](https://buymeacoffee.com/serendeep).
 
 ---
 
