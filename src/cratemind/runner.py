@@ -13,7 +13,8 @@ from collections.abc import Callable
 from .config import Settings
 from .download.backends import fetch_playlist
 from .download.base import Track
-from .pipeline import process_track
+from .manifest import TrackEntry
+from .pipeline import place_from_manifest, process_track
 from .store.db import CrateStore
 
 Fetch = Callable[[str, Settings], "tuple[str, list[Track]]"]
@@ -29,6 +30,7 @@ def run_crate(
     fetch: Fetch = fetch_playlist,
     process: Process = process_track,
     on_update: OnUpdate | None = None,
+    overrides: dict[str, TrackEntry] | None = None,
 ) -> tuple[str, list[Track]]:
     backend_name, tracks = fetch(playlist_url, settings)
     results: list[Track] = []
@@ -43,7 +45,17 @@ def run_crate(
         store.upsert_track(playlist_url, downloading)
         if on_update:
             on_update(downloading)
-        done = process(downloading, settings)
+        entry = overrides.get(track.spotify_id) if overrides else None
+        if entry is not None:
+            done = place_from_manifest(
+                downloading,
+                settings,
+                bpm=entry.bpm,
+                bpm_bucket=entry.bpm_bucket,
+                genre=entry.genre,
+            )
+        else:
+            done = process(downloading, settings)
         store.upsert_track(playlist_url, done)
         if on_update:
             on_update(done)

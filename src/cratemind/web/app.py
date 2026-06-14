@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request, Response
+from fastapi import FastAPI, File, Form, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from .. import __version__
 from ..config import DEFAULT_TEMPLATE, Settings
+from ..manifest import CrateManifest
 from .jobs import JobManager
 from .view import ordered_tracks, summarize
 
@@ -80,6 +81,31 @@ def start_run(
         bucket_width=bucket_width,
     )
     job = jobs.start(playlist_url, settings)
+    return _results(request, job)
+
+
+@app.post("/import", response_class=HTMLResponse)
+async def import_crate(
+    request: Request,
+    crate: UploadFile = File(...),
+    output_dir: str = Form(...),
+    audio_format: str = Form("flac"),
+    folder_template: str = Form(DEFAULT_TEMPLATE),
+) -> HTMLResponse:
+    raw = (await crate.read()).decode("utf-8", "replace")
+    try:
+        manifest = CrateManifest.from_json(raw)
+    except Exception:
+        return HTMLResponse(
+            "<div class='err'>That file isn't a valid crate.json.</div>", status_code=400
+        )
+    settings = Settings(
+        output_dir=Path(output_dir).expanduser(),
+        audio_format=audio_format,
+        folder_template=folder_template,
+    )
+    overrides = {entry.spotify_id: entry for entry in manifest.tracks}
+    job = jobs.start(manifest.playlist_url, settings, runner_kwargs={"overrides": overrides})
     return _results(request, job)
 
 

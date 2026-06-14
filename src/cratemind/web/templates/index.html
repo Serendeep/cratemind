@@ -171,9 +171,13 @@ footer{margin-top:36px;border-top:1px solid var(--line-2);padding:22px 0 44px}
     </details>
   </form>
 
-  <div class="subrow">
-    <span class="hint">import a shared crate.json to re-create it — same tracks, skip re-analysis (coming soon)</span>
-  </div>
+  <form class="subrow" hx-post="/import" hx-target="#results" hx-swap="innerHTML" hx-encoding="multipart/form-data">
+    <input type="file" name="crate" accept="application/json,.json" required
+           style="width:auto;color:var(--t2);font-size:12px;padding:7px 10px">
+    <input type="hidden" name="output_dir" value="{{ defaults.output_dir }}">
+    <button class="btn sm" type="submit">Import crate.json</button>
+    <span class="hint">re-create a shared crate, same tracks, skip re-analysis</span>
+  </form>
 
   <div id="results">
     <div class="empty">Paste a playlist link above and hit Run — tracks will appear here as they download, analyze, and sort.</div>

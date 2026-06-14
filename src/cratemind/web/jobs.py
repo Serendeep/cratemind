@@ -50,7 +50,14 @@ class JobManager:
     def get(self, job_id: str) -> Job | None:
         return self._jobs.get(job_id)
 
-    def start(self, playlist_url: str, settings: Settings, *, runner: Runner = run_crate) -> Job:
+    def start(
+        self,
+        playlist_url: str,
+        settings: Settings,
+        *,
+        runner: Runner = run_crate,
+        runner_kwargs: dict[str, object] | None = None,
+    ) -> Job:
         job = Job(id=uuid.uuid4().hex[:12], playlist_url=playlist_url)
         self._jobs[job.id] = job
 
@@ -64,7 +71,9 @@ class JobManager:
             # it, so create it here on the worker thread, not the caller's.
             store = self._store_factory()
             try:
-                backend, _ = runner(playlist_url, settings, store, on_update=on_update)
+                backend, _ = runner(
+                    playlist_url, settings, store, on_update=on_update, **(runner_kwargs or {})
+                )
                 with job.lock:
                     job.backend = backend
                     job.status = "done"

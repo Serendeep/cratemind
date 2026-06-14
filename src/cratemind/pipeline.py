@@ -25,3 +25,20 @@ def process_track(
     if analyzed.status == "failed":
         return analyzed
     return sort_track(analyzed, settings, artist_genre_lookup=artist_genre_lookup)
+
+
+def place_from_manifest(
+    track: Track,
+    settings: Settings,
+    *,
+    bpm: int | None,
+    bpm_bucket: str | None,
+    genre: str | None,
+) -> Track:
+    """Sort a downloaded track using a shared manifest's analysis — no librosa.
+
+    Used on import: the BPM and genre come from the crate.json someone shared, so
+    we just file the freshly downloaded file into the right folder.
+    """
+    enriched = track.update(bpm=bpm, bpm_bucket=bpm_bucket, genre=genre, status="analyzing")
+    return sort_track(enriched, settings)
