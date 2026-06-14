@@ -178,10 +178,10 @@ public issue.
 
 ## A one-click app (coming soon)
 
-A bundled version with everything inside (no terminal, no setup) is planned for
-desktop. You can pre-order it for $50. The proceeds fund an Apple Developer
-license so the macOS build ships properly signed. Look for the pre-order link in
-the app footer, or [buy me a coffee](https://buymeacoffee.com/serendeep).
+A bundled version with everything inside (no terminal, no setup), code-signed so
+it opens without security warnings, is planned for desktop. Pre-order for $50 to
+lock in the early-supporter price and get it the day it ships. Look for the
+pre-order link in the app footer, or [buy me a coffee](https://buymeacoffee.com/serendeep).
 
 ---
 
