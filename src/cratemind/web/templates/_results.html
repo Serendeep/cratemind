@@ -1,9 +1,10 @@
 {% if job.status == "error" %}
-<div class="err">Couldn't run: {{ job.error }}. Make sure <span class="mono">spotdl</span> and <span class="mono">ffmpeg</span> are installed — see the README.</div>
-{% elif not tracks %}
-<div class="empty">Starting up… resolving the playlist.</div>
+<div class="err">Couldn't run: {{ job.error }}. Make sure <span class="mono">spotdl</span> and <span class="mono">ffmpeg</span> are installed (see the README).</div>
 {% else %}
-<div id="run"{% if job.status == "running" %} hx-get="/runs/{{ job.id }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+<div id="run"{% if job.status == "running" %} hx-get="/runs/{{ job.id }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if not tracks %}
+  <div class="empty">Downloading the playlist… the first tracks can take a few minutes. Watch the terminal for live download progress.</div>
+  {% else %}
   <div class="label">// {{ "running" if job.status == "running" else "crate" }}</div>
   <div class="runline">
     <span class="nm2 mono">{{ job.playlist_url }}</span>
@@ -52,6 +53,7 @@
     <button class="btn sm" hx-post="/runs/{{ job.id }}/share" hx-target="#sharelink" hx-swap="innerHTML">Share link</button>
     <span id="sharelink"></span>
   </div>
+  {% endif %}
   {% endif %}
 </div>
 {% endif %}

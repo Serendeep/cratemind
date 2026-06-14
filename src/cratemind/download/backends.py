@@ -62,12 +62,14 @@ def build_spotiflac_command(playlist_url: str, out_dir: Path) -> list[str]:
 def _run(command: list[str]) -> None:
     if shutil.which(command[0]) is None:
         raise BackendUnavailable(f"{command[0]!r} is not installed")
+    # Inherit the terminal so the user sees live download progress (a playlist
+    # download is one long subprocess; capturing output would hide all of it).
     try:
-        _ = subprocess.run(command, check=True, capture_output=True, text=True)
+        _ = subprocess.run(command, check=True)
     except subprocess.CalledProcessError as exc:  # pragma: no cover - passthrough
-        stderr = (exc.stderr or "").strip()
-        tail = stderr.splitlines()[-1] if stderr else f"exit {exc.returncode}"
-        raise BackendUnavailable(f"{command[0]} failed: {tail}") from exc
+        raise BackendUnavailable(
+            f"{command[0]} failed (exit {exc.returncode}); see the terminal for details"
+        ) from exc
 
 
 class SpotiFlacBackend:
