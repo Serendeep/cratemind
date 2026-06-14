@@ -3,7 +3,7 @@
 {% else %}
 <div id="run"{% if job.status == "running" %} hx-get="/runs/{{ job.id }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
   {% if not tracks %}
-  <div class="empty">Downloading the playlist… the first tracks can take a few minutes. Watch the terminal for live download progress.</div>
+  <div class="empty">Downloading… {{ job.downloaded }} track{{ '' if job.downloaded == 1 else 's' }} ready so far. The first tracks can take a minute or two.</div>
   {% else %}
   <div class="label">// {{ "running" if job.status == "running" else "crate" }}</div>
   <div class="runline">

@@ -106,11 +106,16 @@ class SpotdlBackend:
 
 
 def select_backends(audio_format: str) -> list[DownloadBackend]:
-    """Ordered backends to try: lossless first for FLAC, spotdl as the net."""
-    spotdl = SpotdlBackend(audio_format)
-    if audio_format == "flac":
-        return [SpotiFlacBackend(), spotdl]
-    return [spotdl]
+    """Backends to try, in order.
+
+    SpotiFLAC (true lossless) is paused: its free, no-account providers are
+    reverse-engineered mirrors that are down most of the time, which would make
+    a FLAC run hang for minutes before failing. spotdl is the dependable default.
+    To re-enable lossless once it's stable, prepend ``SpotiFlacBackend()`` for the
+    flac case — ``fetch_playlist`` already falls through to spotdl if it gets
+    nothing.
+    """
+    return [SpotdlBackend(audio_format)]
 
 
 def fetch_playlist(playlist_url: str, settings: Settings) -> tuple[str, list[Track]]:
@@ -123,7 +128,12 @@ def fetch_playlist(playlist_url: str, settings: Settings) -> tuple[str, list[Tra
     for backend in select_backends(settings.audio_format):
         try:
             tracks = backend.fetch(playlist_url, settings.output_dir)
-            return backend.name, tracks
         except BackendUnavailable as error:
             last_error = error
+            continue
+        if tracks:
+            return backend.name, tracks
+        # A backend that runs but downloads nothing (e.g. its providers are down)
+        # shouldn't strand the run — fall through to the next one.
+        last_error = BackendUnavailable(f"{backend.name} downloaded nothing")
     raise BackendUnavailable(f"no usable download backend: {last_error}")

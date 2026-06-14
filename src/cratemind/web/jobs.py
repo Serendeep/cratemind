@@ -32,6 +32,7 @@ class Job:
     status: str = "running"  # running | done | error
     error: str | None = None
     backend: str | None = None
+    downloaded: int = 0  # files in the cache, for live download feedback
     tracks: list[Track] = field(default_factory=list)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -70,6 +71,20 @@ class JobManager:
             # The store owns a SQLite connection bound to the thread that opens
             # it, so create it here on the worker thread, not the caller's.
             store = self._store_factory()
+            stop = threading.Event()
+
+            def monitor() -> None:
+                # Count files appearing in the cache so the UI can show live
+                # download progress without parsing the downloader's output.
+                from ..download.backends import audio_files, cache_dir
+
+                cache = cache_dir(settings.output_dir)
+                while not stop.is_set():
+                    with job.lock:
+                        job.downloaded = len(audio_files(cache))
+                    stop.wait(2)
+
+            threading.Thread(target=monitor, daemon=True).start()
             try:
                 backend, _ = runner(
                     playlist_url, settings, store, on_update=on_update, **(runner_kwargs or {})
@@ -82,6 +97,7 @@ class JobManager:
                     job.status = "error"
                     job.error = str(error)
             finally:
+                stop.set()
                 store.close()
 
         self._spawn(work)

@@ -17,9 +17,9 @@ from cratemind.config import Settings
 URL = "https://open.spotify.com/playlist/abc"
 
 
-def test_select_backends_flac_prefers_lossless_then_fallback():
-    chosen = select_backends("flac")
-    assert [b.name for b in chosen] == ["spotiflac", "spotdl"]
+def test_select_backends_flac_uses_spotdl():
+    # SpotiFLAC is paused; spotdl handles flac (and every format) for now.
+    assert [b.name for b in select_backends("flac")] == ["spotdl"]
 
 
 def test_select_backends_lossy_is_spotdl_only():
@@ -93,6 +93,27 @@ def test_fetch_playlist_falls_through_to_spotdl(monkeypatch, tmp_path):
     name, tracks = fetch_playlist(URL, settings)
     assert name == "spotdl"
     assert len(tracks) == 1 and tracks[0].source == "spotdl"
+
+
+def test_fetch_playlist_falls_through_when_backend_downloads_nothing(monkeypatch, tmp_path):
+    # SpotiFLAC exits cleanly but its providers are down, so it produces no files.
+    settings = Settings(output_dir=tmp_path, audio_format="flac")
+    monkeypatch.setattr(
+        backends,
+        "select_backends",
+        lambda _fmt: [backends.SpotiFlacBackend(), backends.SpotdlBackend("mp3")],
+    )
+
+    def fake_run(command):
+        if command[0] == "spotiflac":
+            return  # "succeeds" with zero downloads
+        (backends.cache_dir(tmp_path) / "song.mp3").write_bytes(b"\x00")
+
+    monkeypatch.setattr(backends, "_run", fake_run)
+    monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "S", "artist": "A", "genre": None})
+    name, tracks = fetch_playlist(URL, settings)
+    assert name == "spotdl"  # must fall through, not return spotiflac's empty result
+    assert len(tracks) == 1
 
 
 def test_fetch_returns_only_newly_downloaded_files(monkeypatch, tmp_path):
