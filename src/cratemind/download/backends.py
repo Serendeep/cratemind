@@ -56,7 +56,20 @@ def build_spotdl_command(playlist_url: str, out_dir: Path, audio_format: str) ->
 
 def build_spotiflac_command(playlist_url: str, out_dir: Path) -> list[str]:
     # SpotiFLAC CLI is positional: `spotiflac <url> <output_dir>`.
-    return ["spotiflac", playlist_url, str(out_dir)]
+    # Amazon survives provider outages most often, so try it first; retry to ride
+    # out transient mirror failures.
+    return [
+        "spotiflac",
+        playlist_url,
+        str(out_dir),
+        "--service",
+        "amazon",
+        "qobuz",
+        "tidal",
+        "deezer",
+        "--retries",
+        "2",
+    ]
 
 
 def _run(command: list[str]) -> None:
@@ -108,14 +121,14 @@ class SpotdlBackend:
 def select_backends(audio_format: str) -> list[DownloadBackend]:
     """Backends to try, in order.
 
-    SpotiFLAC (true lossless) is paused: its free, no-account providers are
-    reverse-engineered mirrors that are down most of the time, which would make
-    a FLAC run hang for minutes before failing. spotdl is the dependable default.
-    To re-enable lossless once it's stable, prepend ``SpotiFlacBackend()`` for the
-    flac case — ``fetch_playlist`` already falls through to spotdl if it gets
-    nothing.
+    EXPERIMENT branch: SpotiFLAC (true lossless) is re-enabled for FLAC, with
+    spotdl as the fallback. ``fetch_playlist`` falls through to spotdl if
+    SpotiFLAC's providers are down and it returns nothing.
     """
-    return [SpotdlBackend(audio_format)]
+    spotdl = SpotdlBackend(audio_format)
+    if audio_format == "flac":
+        return [SpotiFlacBackend(), spotdl]
+    return [spotdl]
 
 
 def fetch_playlist(playlist_url: str, settings: Settings) -> tuple[str, list[Track]]:

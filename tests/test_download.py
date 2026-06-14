@@ -17,9 +17,9 @@ from cratemind.config import Settings
 URL = "https://open.spotify.com/playlist/abc"
 
 
-def test_select_backends_flac_uses_spotdl():
-    # SpotiFLAC is paused; spotdl handles flac (and every format) for now.
-    assert [b.name for b in select_backends("flac")] == ["spotdl"]
+def test_select_backends_flac_includes_spotiflac():
+    # EXPERIMENT branch: lossless first, spotdl fallback.
+    assert [b.name for b in select_backends("flac")] == ["spotiflac", "spotdl"]
 
 
 def test_select_backends_lossy_is_spotdl_only():
@@ -43,8 +43,10 @@ def test_build_spotdl_command_shape():
 
 
 def test_build_spotiflac_command_is_positional():
-    # SpotiFLAC CLI: `spotiflac <url> <output_dir>`
-    assert build_spotiflac_command(URL, Path("/out")) == ["spotiflac", URL, "/out"]
+    # SpotiFLAC CLI: `spotiflac <url> <output_dir> [--service ...]`
+    cmd = build_spotiflac_command(URL, Path("/out"))
+    assert cmd[:3] == ["spotiflac", URL, "/out"]
+    assert "--service" in cmd and "amazon" in cmd  # Amazon-first provider order
 
 
 def test_is_lossless_by_suffix():
