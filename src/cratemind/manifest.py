@@ -7,7 +7,11 @@ them identically, skipping re-analysis. Versioned + schema-validated.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from pydantic import BaseModel, Field
+
+from .download.base import Track
 
 MANIFEST_VERSION = 1
 
@@ -26,6 +30,30 @@ class CrateManifest(BaseModel):
     playlist_url: str
     playlist_name: str | None = None
     tracks: list[TrackEntry] = Field(default_factory=list)
+
+    @classmethod
+    def from_tracks(
+        cls,
+        playlist_url: str,
+        tracks: Iterable[Track],
+        *,
+        playlist_name: str | None = None,
+    ) -> "CrateManifest":
+        return cls(
+            playlist_url=playlist_url,
+            playlist_name=playlist_name,
+            tracks=[
+                TrackEntry(
+                    spotify_id=t.spotify_id,
+                    title=t.title,
+                    artist=t.artist,
+                    genre=t.genre,
+                    bpm=t.bpm,
+                    bpm_bucket=t.bpm_bucket,
+                )
+                for t in tracks
+            ],
+        )
 
     @classmethod
     def from_json(cls, data: str) -> "CrateManifest":
