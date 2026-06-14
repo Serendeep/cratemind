@@ -31,11 +31,13 @@ def render_path(
     bpm_bucket: str | None,
     artist: str | None,
     year: int | None,
+    key: str | None = None,
 ) -> Path:
     values = {
         "genre": genre or UNSORTED,
         "bpm": "" if bpm is None else str(bpm),
         "bpm_bucket": bpm_bucket or UNSORTED,
+        "key": key or UNSORTED,
         "artist": artist or "unknown",
         "year": "" if year is None else str(year),
     }

@@ -22,6 +22,7 @@ class Track:
     genre: str | None = None
     bpm: int | None = None
     bpm_bucket: str | None = None
+    key: str | None = None  # Camelot code, e.g. "8A"
     source: str | None = None  # "spotiflac" | "spotdl"
     lossless: bool = False
     file_path: Path | None = None

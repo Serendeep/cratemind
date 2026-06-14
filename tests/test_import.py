@@ -19,10 +19,16 @@ def test_place_from_manifest_files_using_manifest_values(tmp_path):
     src.write_bytes(b"\x00")
     track = Track(spotify_id="1", title="Nightcall", artist="Kavinsky", file_path=src)
     result = place_from_manifest(
-        track, Settings(output_dir=out), bpm=118, bpm_bucket="112-119", genre="synthwave"
+        track,
+        Settings(output_dir=out),
+        bpm=118,
+        bpm_bucket="112-119",
+        key="11B",
+        genre="synthwave",
     )
     assert result.status == "sorted"
     assert result.bpm == 118
+    assert result.key == "11B"
     assert result.genre == "synthwave"
     assert result.file_path == out / "synthwave" / "112-119" / "song.flac"
     assert result.file_path.exists()

@@ -23,6 +23,7 @@ class TrackEntry(BaseModel):
     genre: str | None = None
     bpm: int | None = None
     bpm_bucket: str | None = None
+    key: str | None = None
 
 
 class CrateManifest(BaseModel):
@@ -50,6 +51,7 @@ class CrateManifest(BaseModel):
                     genre=t.genre,
                     bpm=t.bpm,
                     bpm_bucket=t.bpm_bucket,
+                    key=t.key,
                 )
                 for t in tracks
             ],

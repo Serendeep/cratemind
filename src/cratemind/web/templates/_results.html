@@ -19,7 +19,7 @@
     <div class="tr{{ ' queued' if t.status == 'queued' else '' }}">
       <div class="st {{ cls }}"><span class="d"></span>{{ t.status }}</div>
       <div class="nm"><div class="t">{{ t.title }}</div><div class="a">{{ t.artist }}</div></div>
-      {% if t.bpm %}<div class="bpm"><b>{{ t.bpm }}</b><small>{{ t.bpm_bucket }}</small></div>
+      {% if t.bpm %}<div class="bpm"><b>{{ t.bpm }}</b><small>{{ t.bpm_bucket }}{% if t.key %} · {{ t.key }}{% endif %}</small></div>
       {% else %}<div class="bpm none"><b>—</b><small>bpm</small></div>{% endif %}
       {% if t.genre %}<div class="gen">{{ t.genre }}</div>
       {% elif t.status == "sorted" %}<div class="gen un">unsorted</div>

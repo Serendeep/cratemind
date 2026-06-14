@@ -62,8 +62,14 @@ def test_process_track_end_to_end(tmp_path):
     out = tmp_path / "out"
     src = _make_file(tmp_path, "track.flac")
     track = Track(spotify_id="1", title="Resonance", artist="HOME", genre="chillwave", file_path=src)
-    result = process_track(track, Settings(output_dir=out), estimator=lambda _p: 110.0)
+    result = process_track(
+        track,
+        Settings(output_dir=out),
+        estimator=lambda _p: 110.0,
+        key_estimator=lambda _p: "8A",
+    )
     assert result.status == "sorted"
     assert result.bpm == 110
+    assert result.key == "8A"
     assert result.file_path == out / "chillwave" / "104-111" / "track.flac"
     assert result.file_path.exists()

@@ -91,7 +91,8 @@ a folder, and hit **Run**.
 - **Format** — FLAC (best quality) by default; MP3 and M4A are smaller.
 - **Folder template** — how folders get named. `{genre}/{bpm_bucket}/` gives you
   `House/120-127bpm/`. You can mix and match these tokens: `{genre}`,
-  `{bpm_bucket}`, `{bpm}`, `{artist}`, `{year}`.
+  `{bpm_bucket}`, `{bpm}`, `{key}`, `{artist}`, `{year}`. `{key}` is the Camelot
+  code (like `8A`) for harmonic mixing, also shown next to each track's BPM.
 - **Advanced** — the BPM window (used to correct half- or double-tempo
   mistakes) and how wide each tempo band is.
 

@@ -52,6 +52,7 @@ def run_crate(
                 settings,
                 bpm=entry.bpm,
                 bpm_bucket=entry.bpm_bucket,
+                key=entry.key,
                 genre=entry.genre,
             )
         else:

@@ -6,12 +6,18 @@ can show the download → analyze → sort progression.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
+
 from .analysis.analyzer import Estimator, analyze_bpm
 from .analysis.bpm import estimate_raw_bpm
+from .analysis.key import estimate_camelot
 from .config import Settings
 from .download.base import Track
 from .genre.resolve import ArtistGenreLookup
 from .organize.sorter import sort_track
+
+KeyEstimator = Callable[[Path], str]
 
 
 def process_track(
@@ -19,11 +25,14 @@ def process_track(
     settings: Settings,
     *,
     estimator: Estimator = estimate_raw_bpm,
+    key_estimator: KeyEstimator = estimate_camelot,
     artist_genre_lookup: ArtistGenreLookup | None = None,
 ) -> Track:
     analyzed = analyze_bpm(track, settings, estimator=estimator)
     if analyzed.status == "failed":
         return analyzed
+    if analyzed.file_path is not None:
+        analyzed = analyzed.update(key=key_estimator(analyzed.file_path) or None)
     return sort_track(analyzed, settings, artist_genre_lookup=artist_genre_lookup)
 
 
@@ -33,6 +42,7 @@ def place_from_manifest(
     *,
     bpm: int | None,
     bpm_bucket: str | None,
+    key: str | None,
     genre: str | None,
 ) -> Track:
     """Sort a downloaded track using a shared manifest's analysis — no librosa.
@@ -40,5 +50,7 @@ def place_from_manifest(
     Used on import: the BPM and genre come from the crate.json someone shared, so
     we just file the freshly downloaded file into the right folder.
     """
-    enriched = track.update(bpm=bpm, bpm_bucket=bpm_bucket, genre=genre, status="analyzing")
+    enriched = track.update(
+        bpm=bpm, bpm_bucket=bpm_bucket, key=key, genre=genre, status="analyzing"
+    )
     return sort_track(enriched, settings)

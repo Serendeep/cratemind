@@ -43,6 +43,7 @@ def destination_dir(track: Track, settings: Settings, genre: str | None) -> Path
         genre=genre,
         bpm=track.bpm,
         bpm_bucket=track.bpm_bucket,
+        key=track.key,
         artist=track.artist,
         year=None,
     )
