@@ -55,8 +55,7 @@ if (Have spotiflac) {
   if ($ok) {
     Ok "SpotiFLAC installed"
   } else {
-    Warn "SpotiFLAC couldn't be installed automatically. It's optional — cratemind uses spotdl instead."
-    Warn "For lossless, install from https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version and set CRATEMIND_SPOTIFLAC_CMD."
+    Warn "Couldn't install SpotiFLAC. That's fine, cratemind will use standard-quality downloads instead."
   }
 }
 

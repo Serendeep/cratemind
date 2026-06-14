@@ -54,8 +54,7 @@ elif have uv; then
   if uv tool install SpotiFLAC >/dev/null 2>&1 && have spotiflac; then
     ok "SpotiFLAC installed"
   else
-    warn "SpotiFLAC couldn't be installed automatically. It's optional — cratemind uses spotdl instead."
-    warn "For lossless, install it from https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version and set CRATEMIND_SPOTIFLAC_CMD to its command."
+    warn "Couldn't install SpotiFLAC. That's fine, cratemind will use standard-quality downloads instead."
   fi
 fi
 

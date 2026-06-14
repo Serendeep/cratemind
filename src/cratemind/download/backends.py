@@ -9,7 +9,6 @@ the orchestrator falls through to the next one.
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -44,10 +43,8 @@ def build_spotdl_command(playlist_url: str, out_dir: Path, audio_format: str) ->
 
 
 def build_spotiflac_command(playlist_url: str, out_dir: Path) -> list[str]:
-    # SpotiFLAC CLI is positional: `spotiflac <url> <output_dir> [--service ...]`.
-    # CRATEMIND_SPOTIFLAC_CMD overrides the executable name/path if needed.
-    exe = os.environ.get("CRATEMIND_SPOTIFLAC_CMD", "spotiflac")
-    return [exe, playlist_url, str(out_dir)]
+    # SpotiFLAC CLI is positional: `spotiflac <url> <output_dir>`.
+    return ["spotiflac", playlist_url, str(out_dir)]
 
 
 def _run(command: list[str]) -> None:

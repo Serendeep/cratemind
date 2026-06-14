@@ -43,12 +43,6 @@ def test_build_spotiflac_command_is_positional():
     assert build_spotiflac_command(URL, Path("/out")) == ["spotiflac", URL, "/out"]
 
 
-def test_build_spotiflac_command_honours_env_override(monkeypatch):
-    monkeypatch.setenv("CRATEMIND_SPOTIFLAC_CMD", "my-flac")
-    cmd = build_spotiflac_command(URL, Path("/out"))
-    assert cmd[0] == "my-flac"
-
-
 def test_is_lossless_by_suffix():
     assert tags.is_lossless(Path("a.flac"))
     assert not tags.is_lossless(Path("a.mp3"))
