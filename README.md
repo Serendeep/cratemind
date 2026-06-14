@@ -99,6 +99,11 @@ Tracks appear in a live list as they download, get analyzed, and get sorted.
 Anything cratemind can't find a genre for goes into an `unsorted` folder, so
 nothing ever gets lost.
 
+Re-running the same playlist is cheap: cratemind keeps a hidden
+`.cratemind-cache` folder inside your output folder with the original downloads,
+so it skips anything it already has. You can delete that folder to reclaim space;
+it just re-downloads next time.
+
 ---
 
 ## Sharing a crate

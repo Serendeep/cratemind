@@ -30,6 +30,12 @@ def audio_files(directory: Path) -> set[Path]:
     return {p for p in directory.rglob("*") if p.suffix.lower() in AUDIO_SUFFIXES}
 
 
+def cache_dir(out_dir: Path) -> Path:
+    """Persistent download cache. Keeping originals here lets the downloaders
+    skip what they've already fetched, so reruns don't re-download."""
+    return out_dir / ".cratemind-cache"
+
+
 def build_spotdl_command(playlist_url: str, out_dir: Path, audio_format: str) -> list[str]:
     # spotdl's --output is a filename TEMPLATE, not a directory, so include a name
     # pattern to make files land inside out_dir with sensible names.
@@ -42,6 +48,9 @@ def build_spotdl_command(playlist_url: str, out_dir: Path, audio_format: str) ->
         output_template,
         "--format",
         audio_format,
+        "--overwrite",
+        "skip",
+        "--scan-for-songs",
     ]
 
 
@@ -68,10 +77,11 @@ class SpotiFlacBackend:
         return audio_format == "flac"
 
     def fetch(self, playlist_url: str, out_dir: Path) -> list[Track]:
-        out_dir.mkdir(parents=True, exist_ok=True)
-        before = audio_files(out_dir)
-        _run(build_spotiflac_command(playlist_url, out_dir))
-        fresh = audio_files(out_dir) - before
+        cache = cache_dir(out_dir)
+        cache.mkdir(parents=True, exist_ok=True)
+        before = audio_files(cache)
+        _run(build_spotiflac_command(playlist_url, cache))
+        fresh = audio_files(cache) - before
         return [track_from_file(p, source=self.name) for p in sorted(fresh)]
 
 
@@ -85,10 +95,11 @@ class SpotdlBackend:
         return audio_format in ("flac", "mp3", "m4a")
 
     def fetch(self, playlist_url: str, out_dir: Path) -> list[Track]:
-        out_dir.mkdir(parents=True, exist_ok=True)
-        before = audio_files(out_dir)
-        _run(build_spotdl_command(playlist_url, out_dir, self.audio_format))
-        fresh = audio_files(out_dir) - before
+        cache = cache_dir(out_dir)
+        cache.mkdir(parents=True, exist_ok=True)
+        before = audio_files(cache)
+        _run(build_spotdl_command(playlist_url, cache, self.audio_format))
+        fresh = audio_files(cache) - before
         return [track_from_file(p, source=self.name) for p in sorted(fresh)]
 
 

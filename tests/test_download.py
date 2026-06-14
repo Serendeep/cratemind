@@ -35,6 +35,8 @@ def test_build_spotdl_command_shape():
     cmd = build_spotdl_command(URL, Path("/out"), "mp3")
     assert cmd[:3] == ["spotdl", "download", URL]
     assert "--format" in cmd and "mp3" in cmd
+    assert "--overwrite" in cmd and "skip" in cmd  # skip already-downloaded
+    assert "--scan-for-songs" in cmd
     output = cmd[cmd.index("--output") + 1]
     assert output.startswith("/out/")  # template lives inside out_dir
     assert "{title}" in output and "{output-ext}" in output
@@ -77,7 +79,7 @@ def test_missing_cli_raises_backend_unavailable(monkeypatch):
 
 def test_fetch_playlist_falls_through_to_spotdl(monkeypatch, tmp_path):
     settings = Settings(output_dir=tmp_path, audio_format="flac")
-    created = tmp_path / "song.mp3"
+    created = backends.cache_dir(tmp_path) / "song.mp3"  # downloads land in the cache
 
     def fake_run(command):
         # SpotiFLAC missing -> unavailable; spotdl "downloads" a file
@@ -91,3 +93,17 @@ def test_fetch_playlist_falls_through_to_spotdl(monkeypatch, tmp_path):
     name, tracks = fetch_playlist(URL, settings)
     assert name == "spotdl"
     assert len(tracks) == 1 and tracks[0].source == "spotdl"
+
+
+def test_fetch_returns_only_newly_downloaded_files(monkeypatch, tmp_path):
+    cache = backends.cache_dir(tmp_path)
+    cache.mkdir(parents=True)
+    (cache / "old.flac").write_bytes(b"\x00")  # already downloaded on a previous run
+
+    def fake_run(_command):
+        (cache / "new.flac").write_bytes(b"\x00")  # this run adds one new track
+
+    monkeypatch.setattr(backends, "_run", fake_run)
+    monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "t", "artist": "a", "genre": None})
+    tracks = SpotdlBackend("flac").fetch(URL, tmp_path)
+    assert {t.file_path.name for t in tracks if t.file_path} == {"new.flac"}  # cached file skipped

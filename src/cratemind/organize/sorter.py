@@ -7,6 +7,7 @@ suffix so two tracks never clobber each other.
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -14,6 +15,15 @@ from ..config import Settings
 from ..download.base import Track
 from ..genre.resolve import ArtistGenreLookup, resolve_genre
 from .template import UNSORTED, render_path
+
+
+def _link_or_copy(src: Path, dest: Path) -> None:
+    """Hardlink the cached original into the sorted tree, keeping the cache so
+    reruns can skip the download. Falls back to a copy across filesystems."""
+    try:
+        os.link(src, dest)
+    except OSError:
+        _ = shutil.copy2(src, dest)
 
 
 def unique_path(path: Path) -> Path:
@@ -55,5 +65,5 @@ def sort_track(
         folder = root / UNSORTED
     folder.mkdir(parents=True, exist_ok=True)
     dest = unique_path(folder / track.file_path.name)
-    _ = shutil.move(str(track.file_path), str(dest))
+    _link_or_copy(track.file_path, dest)
     return track.update(genre=genre, file_path=dest, status="sorted")

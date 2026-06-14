@@ -28,7 +28,7 @@ def test_sort_track_moves_into_genre_bucket(tmp_path):
     assert result.status == "sorted"
     assert result.file_path == out / "synthwave" / "112-119" / "song.flac"
     assert result.file_path.exists()
-    assert not src.exists()
+    assert src.exists()  # cached original kept so reruns skip the download
 
 
 def test_sort_track_uses_unsorted_without_genre(tmp_path):
