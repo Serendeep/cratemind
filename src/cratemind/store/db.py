@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS tracks (
     genre       TEXT,
     bpm         INTEGER,
     bpm_bucket  TEXT,
+    key         TEXT,
     source      TEXT,
     lossless    INTEGER NOT NULL DEFAULT 0,
     file_path   TEXT,
@@ -42,6 +43,7 @@ def _to_track(row: sqlite3.Row) -> Track:
         genre=row["genre"],
         bpm=row["bpm"],
         bpm_bucket=row["bpm_bucket"],
+        key=row["key"],
         source=row["source"],
         lossless=bool(row["lossless"]),
         file_path=Path(row["file_path"]) if row["file_path"] else None,
@@ -63,12 +65,13 @@ class CrateStore:
             """
             INSERT INTO tracks
                 (run_url, spotify_id, title, artist, genre, bpm, bpm_bucket,
-                 source, lossless, file_path, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 key, source, lossless, file_path, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_url, spotify_id) DO UPDATE SET
                 title=excluded.title, artist=excluded.artist, genre=excluded.genre,
-                bpm=excluded.bpm, bpm_bucket=excluded.bpm_bucket, source=excluded.source,
-                lossless=excluded.lossless, file_path=excluded.file_path, status=excluded.status
+                bpm=excluded.bpm, bpm_bucket=excluded.bpm_bucket, key=excluded.key,
+                source=excluded.source, lossless=excluded.lossless,
+                file_path=excluded.file_path, status=excluded.status
             """,
             (
                 run_url,
@@ -78,6 +81,7 @@ class CrateStore:
                 track.genre,
                 track.bpm,
                 track.bpm_bucket,
+                track.key,
                 track.source,
                 int(track.lossless),
                 str(track.file_path) if track.file_path else None,
