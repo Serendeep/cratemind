@@ -47,6 +47,11 @@
     {% endfor %}
   </div>
   {% endif %}
+  <div class="share">
+    <a class="btn sm" href="/runs/{{ job.id }}/export">Export crate.json</a>
+    <button class="btn sm" hx-post="/runs/{{ job.id }}/share" hx-target="#sharelink" hx-swap="innerHTML">Share link</button>
+    <span id="sharelink"></span>
+  </div>
   {% endif %}
 </div>
 {% endif %}

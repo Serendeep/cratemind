@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, Request, Response, UploadFile
@@ -11,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from .. import __version__
 from ..config import DEFAULT_TEMPLATE, Settings
 from ..manifest import CrateManifest
+from ..share import share_crate
 from .jobs import JobManager
 from .view import ordered_tracks, summarize
 
@@ -115,3 +117,38 @@ def poll_run(request: Request, job_id: str) -> HTMLResponse:
     if job is None:
         return HTMLResponse("<div class='err'>run not found</div>", status_code=404)
     return _results(request, job)
+
+
+@app.get("/runs/{job_id}/export")
+def export_crate(job_id: str) -> Response:
+    job = jobs.get(job_id)
+    if job is None:
+        return Response("run not found", status_code=404)
+    manifest = CrateManifest.from_tracks(job.playlist_url, job.tracks)
+    return Response(
+        manifest.to_json(),
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="crate.json"'},
+    )
+
+
+@app.post("/runs/{job_id}/share", response_class=HTMLResponse)
+def share_run(job_id: str) -> HTMLResponse:
+    job = jobs.get(job_id)
+    if job is None:
+        return HTMLResponse("<div class='err'>run not found</div>", status_code=404)
+    manifest = CrateManifest.from_tracks(job.playlist_url, job.tracks)
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+        _ = handle.write(manifest.to_json())
+        path = Path(handle.name)
+    try:
+        link = share_crate(path)
+    except Exception as error:
+        return HTMLResponse(f"<div class='err'>Share failed: {error}</div>")
+    finally:
+        path.unlink(missing_ok=True)
+    return HTMLResponse(
+        f'<div class="linkbox"><input class="mono" value="{link}" readonly '
+        f'onclick="this.select()">'
+        f"<button class=\"btn sm\" onclick=\"navigator.clipboard.writeText('{link}')\">Copy</button></div>"
+    )
