@@ -1,5 +1,7 @@
 # cratemind
 
+[![CI](https://github.com/Serendeep/cratemind/actions/workflows/ci.yml/badge.svg)](https://github.com/Serendeep/cratemind/actions/workflows/ci.yml)
+
 Paste a Spotify playlist, get a folder of tracks sorted by genre and tempo.
 
 cratemind downloads each song, works out its BPM and genre, and files it into
