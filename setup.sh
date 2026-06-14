@@ -44,6 +44,21 @@ else
   warn "install uv first, then run: uv tool install spotdl  (docs: https://spotdl.github.io/spotify-downloader/)"
 fi
 
+# SpotiFLAC (optional — lossless FLAC) --------------------------------
+# Non-standard packaging, so this is best-effort. cratemind falls back to
+# spotdl if it isn't present.
+if have spotiflac; then
+  ok "SpotiFLAC already installed"
+elif have uv; then
+  info "installing SpotiFLAC (optional, for lossless)..."
+  if uv tool install SpotiFLAC >/dev/null 2>&1 && have spotiflac; then
+    ok "SpotiFLAC installed"
+  else
+    warn "SpotiFLAC couldn't be installed automatically. It's optional — cratemind uses spotdl instead."
+    warn "For lossless, install it from https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version and set CRATEMIND_SPOTIFLAC_CMD to its command."
+  fi
+fi
+
 # cratemind -----------------------------------------------------------
 if have uv; then
   info "installing cratemind..."

@@ -45,6 +45,21 @@ if (Have spotdl) {
   Warn "install uv first, then run: uv tool install spotdl  (docs: https://spotdl.github.io/spotify-downloader/)"
 }
 
+# SpotiFLAC (optional — lossless FLAC; non-standard packaging, best-effort)
+if (Have spotiflac) {
+  Ok "SpotiFLAC already installed"
+} elseif (Have uv) {
+  Info "installing SpotiFLAC (optional, for lossless)..."
+  $ok = $false
+  try { uv tool install SpotiFLAC | Out-Null; if (Have spotiflac) { $ok = $true } } catch { }
+  if ($ok) {
+    Ok "SpotiFLAC installed"
+  } else {
+    Warn "SpotiFLAC couldn't be installed automatically. It's optional — cratemind uses spotdl instead."
+    Warn "For lossless, install from https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version and set CRATEMIND_SPOTIFLAC_CMD."
+  }
+}
+
 # cratemind
 if (Have uv) {
   Info "installing cratemind..."
