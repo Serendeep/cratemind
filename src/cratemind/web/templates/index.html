@@ -109,6 +109,11 @@ footer{margin-top:36px;border-top:1px solid var(--line-2);padding:22px 0 44px}
 .bmc:hover{color:var(--t1);border-color:var(--t3)}
 .disc{color:var(--t4);font-size:11px;line-height:1.65;max-width:540px}
 .disc b{color:var(--t3);font-weight:500}
+.pitch{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:20px}
+.pitch .txt{font-size:12.5px;color:var(--t2);max-width:62ch}
+.pitch .txt b{color:var(--t1);font-weight:600}
+.pitch .buy{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#0c0d0f;background:var(--acc);border:1px solid var(--acc);border-radius:var(--r);padding:9px 16px;text-decoration:none;white-space:nowrap}
+.pitch .buy:hover{background:#8fc79a}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -185,6 +190,12 @@ footer{margin-top:36px;border-top:1px solid var(--line-2);padding:22px 0 44px}
 </main>
 
 <footer>
+  <div class="wrap">
+    <div class="pitch">
+      <div class="txt"><b>Coming soon: the one-click app.</b> A bundled cratemind with everything inside, no terminal and no setup. Pre-order for $50 to get it first. It funds an Apple Developer license so the macOS build ships properly signed.</div>
+      <a class="buy" href="https://buymeacoffee.com/serendeep">Pre-order, $50 ↗</a>
+    </div>
+  </div>
   <div class="wrap fl">
     <a class="bmc" href="https://buymeacoffee.com/serendeep">Buy me a coffee ↗</a>
     <p class="disc"><b>cratemind</b> is a personal tool for organizing music you are entitled to use. You are solely responsible for complying with the terms of Spotify and any source service, and with copyright law in your jurisdiction. Not affiliated with Spotify, Tidal, or any provider. Provided as-is, without warranty. © 2026 serendeep · MIT.</p>
