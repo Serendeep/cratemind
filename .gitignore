@@ -1,0 +1,36 @@
+# Local planning artifacts — never commit
+.claude/PRPs/
+
+# Blog drafts — published to blog.serendeep.tech, not committed here
+blog/
+*.blog.md
+
+# Secrets & local config
+.env
+.env.*
+*.secret
+secrets/
+
+# Runtime artifacts
+cratemind.db
+cratemind.db-*
+downloads/
+exports/
+*.crate.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.uv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Browser-automation artifacts (mockup verification)
+.playwright-mcp/
+
+# OS
+.DS_Store

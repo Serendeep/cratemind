@@ -1,0 +1,41 @@
+[project]
+name = "cratemind"
+version = "0.1.0"
+description = "Download a Spotify playlist, analyze BPM + genre, and sort tracks into folders."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "serendeep" }]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "mutagen>=1.47",
+    "httpx>=0.27",
+    "pydantic>=2.7",
+    "platformdirs>=4.2",
+]
+
+[project.optional-dependencies]
+# Heavy audio stack — installed only when analysis runs locally.
+analysis = ["librosa>=0.10.2", "numpy>=1.26", "soundfile>=0.12"]
+dev = ["pytest>=8"]
+
+# NOTE: spotdl and SpotiFLAC are NOT library dependencies. spotdl pins fastapi
+# to an old range that conflicts with a modern stack, so both downloaders are
+# invoked as external CLIs (subprocess / uvx), isolated from cratemind's env.
+# The download backends shell out to them; the README documents installing them.
+
+[project.scripts]
+cratemind = "cratemind.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cratemind"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
