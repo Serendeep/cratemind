@@ -19,6 +19,8 @@ def fold_octave(bpm: float, low: int, high: int) -> int:
     """
     if bpm <= 0:
         raise ValueError("bpm must be positive")
+    if high < low * 2:
+        raise ValueError("octave window must span at least one octave (high >= 2*low)")
     value = float(bpm)
     while value < low:
         value *= 2
@@ -39,7 +41,9 @@ def bucket(bpm: int, width: int) -> str:
 def estimate_raw_bpm(audio_path: Path) -> float:
     """Estimate uncorrected tempo from an audio file via librosa (lazy import)."""
     import librosa  # noqa: PLC0415 — deferred so core/tests skip the heavy dep
+    import numpy as np
 
     y, sr = librosa.load(str(audio_path), mono=True)
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    return float(tempo)
+    # librosa >= 0.10 returns tempo as an ndarray; pull the scalar safely.
+    return float(np.atleast_1d(tempo)[0])

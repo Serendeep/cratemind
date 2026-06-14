@@ -54,9 +54,11 @@ def _run(command: list[str]) -> None:
     if shutil.which(command[0]) is None:
         raise BackendUnavailable(f"{command[0]!r} is not installed")
     try:
-        _ = subprocess.run(command, check=True)
+        _ = subprocess.run(command, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as exc:  # pragma: no cover - passthrough
-        raise BackendUnavailable(f"{command[0]} failed (exit {exc.returncode})") from exc
+        stderr = (exc.stderr or "").strip()
+        tail = stderr.splitlines()[-1] if stderr else f"exit {exc.returncode}"
+        raise BackendUnavailable(f"{command[0]} failed: {tail}") from exc
 
 
 class SpotiFlacBackend:
@@ -102,6 +104,8 @@ def fetch_playlist(playlist_url: str, settings: Settings) -> tuple[str, list[Tra
     """Try each backend in order; return (backend_name, tracks) from the first
     that's available and succeeds. Raises BackendUnavailable if none work.
     """
+    if "open.spotify.com" not in playlist_url and not playlist_url.startswith("spotify:"):
+        raise BackendUnavailable("not a Spotify playlist URL")
     last_error: BackendUnavailable | None = None
     for backend in select_backends(settings.audio_format):
         try:

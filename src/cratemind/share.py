@@ -59,5 +59,5 @@ def share_crate(
     """Upload via the primary host; fall back to the secondary on any failure."""
     try:
         return primary(path)
-    except Exception:
+    except (httpx.HTTPError, ShareError):
         return fallback(path)

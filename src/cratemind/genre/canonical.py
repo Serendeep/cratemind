@@ -28,5 +28,5 @@ def canonicalize(name: str | None, aliases: dict[str, str] | None = None) -> str
     text = _WHITESPACE.sub(" ", text).strip()
     if not text:
         return None
-    table = DEFAULT_ALIASES if aliases is None else aliases
+    table = DEFAULT_ALIASES if aliases is None else {**DEFAULT_ALIASES, **aliases}
     return table.get(text, text)

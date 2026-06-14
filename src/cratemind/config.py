@@ -25,8 +25,8 @@ class Settings:
     def __post_init__(self) -> None:
         if self.audio_format not in AUDIO_FORMATS:
             raise ValueError(f"unsupported format: {self.audio_format!r}")
-        if self.octave_low >= self.octave_high:
-            raise ValueError("octave_low must be below octave_high")
+        if self.octave_high < self.octave_low * 2:
+            raise ValueError("octave window must span at least one octave (high >= 2*low)")
         if self.bucket_width <= 0:
             raise ValueError("bucket_width must be positive")
 

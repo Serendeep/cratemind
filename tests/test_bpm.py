@@ -21,6 +21,11 @@ def test_fold_octave_rejects_nonpositive():
         fold_octave(0, 70, 180)
 
 
+def test_fold_octave_rejects_window_narrower_than_an_octave():
+    with pytest.raises(ValueError):
+        fold_octave(95, 100, 110)  # would otherwise loop forever
+
+
 def test_bucket_aligns_to_fixed_band():
     assert bucket(105, 8) == "104-111"
     assert bucket(96, 8) == "96-103"

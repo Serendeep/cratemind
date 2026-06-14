@@ -38,7 +38,7 @@ def test_upload_rejects_non_url_response(tmp_path):
 
 def test_share_crate_falls_back_to_secondary(tmp_path):
     def primary(_p):
-        raise RuntimeError("catbox down")
+        raise ShareError("catbox down")
 
     def fallback(_p):
         return "https://0x0.st/abc.json"

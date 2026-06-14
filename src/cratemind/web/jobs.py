@@ -53,7 +53,6 @@ class JobManager:
     def start(self, playlist_url: str, settings: Settings, *, runner: Runner = run_crate) -> Job:
         job = Job(id=uuid.uuid4().hex[:12], playlist_url=playlist_url)
         self._jobs[job.id] = job
-        store = self._store_factory()
 
         def on_update(track: Track) -> None:
             with job.lock:
@@ -61,13 +60,20 @@ class JobManager:
                 job.tracks = [*kept, track]
 
         def work() -> None:
+            # The store owns a SQLite connection bound to the thread that opens
+            # it, so create it here on the worker thread, not the caller's.
+            store = self._store_factory()
             try:
                 backend, _ = runner(playlist_url, settings, store, on_update=on_update)
-                job.backend = backend
-                job.status = "done"
-            except Exception as error:  # surface the failure in the UI, don't crash the server
-                job.status = "error"
-                job.error = str(error)
+                with job.lock:
+                    job.backend = backend
+                    job.status = "done"
+            except Exception as error:  # surface in the UI, don't crash the server
+                with job.lock:
+                    job.status = "error"
+                    job.error = str(error)
+            finally:
+                store.close()
 
         self._spawn(work)
         return job

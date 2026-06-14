@@ -13,7 +13,7 @@ from pathlib import Path
 from ..config import Settings
 from ..download.base import Track
 from ..genre.resolve import ArtistGenreLookup, resolve_genre
-from .template import render_path
+from .template import UNSORTED, render_path
 
 
 def unique_path(path: Path) -> Path:
@@ -49,6 +49,10 @@ def sort_track(
         return track.update(status="failed")
     genre = resolve_genre(track, artist_genre_lookup=artist_genre_lookup)
     folder = destination_dir(track, settings, genre)
+    # Defense in depth: a template/genre must never escape the output root.
+    root = settings.output_dir.resolve()
+    if not folder.resolve().is_relative_to(root):
+        folder = root / UNSORTED
     folder.mkdir(parents=True, exist_ok=True)
     dest = unique_path(folder / track.file_path.name)
     _ = shutil.move(str(track.file_path), str(dest))
