@@ -116,12 +116,12 @@ a free host (catbox.moe or 0x0.st) to get a link you can pass around.
 
 ---
 
-## Lossless downloads
+## Audio quality
 
-cratemind downloads in true lossless FLAC whenever it can, using
-[SpotiFLAC](https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version), which the
-setup script installs for you. When a track isn't available in lossless, it
-quietly falls back to a standard-quality download. Nothing to configure.
+cratemind downloads good-quality audio with spotdl in the format you pick (FLAC,
+MP3, or M4A). True lossless from Tidal/Qobuz is on the [Roadmap](#roadmap): it
+relied on SpotiFLAC's free providers, which are currently too unreliable to
+depend on, so it's paused for now.
 
 ---
 
@@ -131,6 +131,17 @@ quietly falls back to a standard-quality download. Nothing to configure.
 - **"ffmpeg not found"** — install ffmpeg (see above).
 - **A BPM looks wrong (half or double)** — widen or narrow the BPM window under
   Advanced so it matches the music you're sorting.
+
+---
+
+## Roadmap
+
+- **True lossless downloads (Tidal/Qobuz FLAC).** This used
+  [SpotiFLAC](https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version)'s free,
+  no-account providers — reverse-engineered mirrors that go down for hours at a
+  time. The integration and an automatic fallback to spotdl are already built;
+  it's disabled by default and explored on the `experiment/spotiflac-lossless`
+  branch. It'll come back on once it's dependable.
 
 ---
 
