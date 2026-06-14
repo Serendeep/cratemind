@@ -31,6 +31,7 @@ _FAVICON = (
 
 app = FastAPI(title="cratemind")
 jobs = JobManager()
+_state: dict[str, str | None] = {"active": None}  # most recent run, for reconnect on reload
 
 
 @app.get("/health")
@@ -45,10 +46,12 @@ def favicon() -> Response:
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
+    active = _state["active"]
+    active = active if active and jobs.get(active) else None
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"version": __version__, "defaults": load_settings()},
+        {"version": __version__, "defaults": load_settings(), "active_job_id": active},
     )
 
 
@@ -85,6 +88,7 @@ def start_run(
     )
     save_settings(settings)
     job = jobs.start(playlist_url, settings)
+    _state["active"] = job.id
     return _results(request, job)
 
 
@@ -111,6 +115,7 @@ async def import_crate(
     save_settings(settings)
     overrides = {entry.spotify_id: entry for entry in manifest.tracks}
     job = jobs.start(manifest.playlist_url, settings, runner_kwargs={"overrides": overrides})
+    _state["active"] = job.id
     return _results(request, job)
 
 

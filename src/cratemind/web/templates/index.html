@@ -87,6 +87,18 @@ details[open] summary::before{content:"–"}
 .runline .nm2{font-size:14px;font-weight:500}
 .runline .pr{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3)}
 .runline .pr b{color:var(--acc)}
+.prog{height:4px;background:var(--inset);border-radius:3px;overflow:hidden;margin:8px 0 16px;border:1px solid var(--line-2)}
+.prog i{display:block;height:100%;background:var(--acc);border-radius:3px;transition:width .4s ease}
+.prog.indet i{width:35%;animation:slide 1.3s ease-in-out infinite}
+@keyframes slide{0%{margin-left:-35%}100%{margin-left:100%}}
+.dl{margin:18px 0}
+.dl .lbl{font-size:13px;color:var(--t3);margin-bottom:8px}
+.dl .lbl b{font-family:'JetBrains Mono',monospace;color:var(--t1);font-weight:600}
+.tbl .tr{position:relative}
+.trbar{position:absolute;left:0;right:0;bottom:0;height:2px}
+.trbar i{display:block;height:100%;background:var(--acc);transition:width .5s ease}
+.trbar.work i{background:var(--t2)}
+.trbar.failed i{background:var(--warn)}
 .err{border:1px solid rgba(196,160,106,.3);background:rgba(196,160,106,.06);color:var(--warn);border-radius:var(--r);padding:14px;font-size:13px}
 .stats{display:flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 .stat{flex:1;padding:14px 16px;border-right:1px solid var(--line-2)}
@@ -184,8 +196,8 @@ footer{margin-top:36px;border-top:1px solid var(--line-2);padding:22px 0 44px}
     <span class="hint">re-create a shared crate, same tracks, skip re-analysis</span>
   </form>
 
-  <div id="results">
-    <div class="empty">Paste a playlist link above and hit Run — tracks will appear here as they download, analyze, and sort.</div>
+  <div id="results"{% if active_job_id %} hx-get="/runs/{{ active_job_id }}" hx-trigger="load" hx-swap="innerHTML"{% endif %}>
+    {% if not active_job_id %}<div class="empty">Paste a playlist link above and hit Run — tracks will appear here as they download, analyze, and sort.</div>{% endif %}
   </div>
 </main>
 

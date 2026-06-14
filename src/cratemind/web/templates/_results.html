@@ -3,13 +3,17 @@
 {% else %}
 <div id="run"{% if job.status == "running" %} hx-get="/runs/{{ job.id }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
   {% if not tracks %}
-  <div class="empty">Downloading… {{ job.downloaded }} track{{ '' if job.downloaded == 1 else 's' }} ready so far. The first tracks can take a minute or two.</div>
+  <div class="dl">
+    <div class="lbl">Downloading… <b>{{ job.downloaded }}</b> track{{ '' if job.downloaded == 1 else 's' }} ready. The first tracks can take a minute or two.</div>
+    <div class="prog indet"><i></i></div>
+  </div>
   {% else %}
   <div class="label">// {{ "running" if job.status == "running" else "crate" }}</div>
   <div class="runline">
     <span class="nm2 mono">{{ job.playlist_url }}</span>
     <span class="pr"><b>{{ summary.sorted }}</b> sorted · {{ summary.working }} working · {{ summary.total }} total{% if job.backend %} · {{ job.backend }}{% endif %}</span>
   </div>
+  <div class="prog"><i style="width:{{ summary.progress_pct }}%"></i></div>
   <div class="tbl">
     <div class="head">
       <div>status</div><div>track</div><div style="text-align:right">bpm</div><div>genre</div><div style="text-align:right">source</div>
@@ -27,6 +31,8 @@
       {% if t.source == "spotiflac" %}<div class="src"><span class="ok">SpotiFLAC</span><small>lossless</small></div>
       {% elif t.source == "spotdl" %}<div class="src"><span class="fb">spotdl</span><small>lossy</small></div>
       {% else %}<div class="src"><small>—</small></div>{% endif %}
+      {% set stage = 100 if t.status in ('sorted', 'failed') else (66 if t.status == 'analyzing' else (33 if t.status == 'downloading' else 0)) %}
+      <div class="trbar {{ 'failed' if t.status == 'failed' else ('work' if t.status in ('downloading', 'analyzing') else '') }}"><i style="width:{{ stage }}%"></i></div>
     </div>
     {% endfor %}
   </div>

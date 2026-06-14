@@ -32,5 +32,6 @@ def summarize(tracks: list[Track]) -> dict[str, object]:
         "genres": len({t.genre for t in tracks if t.genre}),
         "unsorted": sum(1 for t in tracks if t.status == "sorted" and not t.genre),
         "lossless_pct": round(100 * lossless / total) if total else 0,
+        "progress_pct": round(100 * status.get("sorted", 0) / total) if total else 0,
         "bins": [(label, count, round(100 * count / bin_max)) for label, count in bin_rows],
     }
