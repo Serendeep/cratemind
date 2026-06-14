@@ -31,12 +31,15 @@ def audio_files(directory: Path) -> set[Path]:
 
 
 def build_spotdl_command(playlist_url: str, out_dir: Path, audio_format: str) -> list[str]:
+    # spotdl's --output is a filename TEMPLATE, not a directory, so include a name
+    # pattern to make files land inside out_dir with sensible names.
+    output_template = f"{out_dir}/{{artists}} - {{title}}.{{output-ext}}"
     return [
         "spotdl",
         "download",
         playlist_url,
         "--output",
-        str(out_dir),
+        output_template,
         "--format",
         audio_format,
     ]

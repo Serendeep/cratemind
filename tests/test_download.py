@@ -35,7 +35,9 @@ def test_build_spotdl_command_shape():
     cmd = build_spotdl_command(URL, Path("/out"), "mp3")
     assert cmd[:3] == ["spotdl", "download", URL]
     assert "--format" in cmd and "mp3" in cmd
-    assert "--output" in cmd and "/out" in cmd
+    output = cmd[cmd.index("--output") + 1]
+    assert output.startswith("/out/")  # template lives inside out_dir
+    assert "{title}" in output and "{output-ext}" in output
 
 
 def test_build_spotiflac_command_is_positional():
