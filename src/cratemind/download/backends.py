@@ -25,20 +25,17 @@ class BackendUnavailable(RuntimeError):
 
 
 def audio_files(directory: Path) -> set[Path]:
+    """Every audio file under ``directory`` (recursive) — used for the download count."""
     if not directory.exists():
         return set()
     return {p for p in directory.rglob("*") if p.suffix.lower() in AUDIO_SUFFIXES}
 
 
-def cache_dir(out_dir: Path) -> Path:
-    """Persistent download cache. Keeping originals here lets the downloaders
-    skip what they've already fetched, so reruns don't re-download.
-
-    The name has no leading dot on purpose: spotdl strips a leading dot from
-    output-path segments, which would make it write to a different folder than
-    cratemind watches.
-    """
-    return out_dir / "cratemind-cache"
+def staging_files(directory: Path) -> set[Path]:
+    """Unsorted downloads in the output root (non-recursive); sorted files live in subfolders."""
+    if not directory.exists():
+        return set()
+    return {p for p in directory.glob("*") if p.is_file() and p.suffix.lower() in AUDIO_SUFFIXES}
 
 
 def build_spotdl_command(playlist_url: str, out_dir: Path, audio_format: str) -> list[str]:
@@ -84,15 +81,7 @@ class SpotiFlacBackend:
         return audio_format == "flac"
 
     def fetch(self, playlist_url: str, out_dir: Path) -> list[Track]:
-        cache = cache_dir(out_dir)
-        cache.mkdir(parents=True, exist_ok=True)
-        before = audio_files(cache)
-        _run(build_spotiflac_command(playlist_url, cache))
-        after = audio_files(cache)
-        # Newly downloaded files; if nothing's new, everything was already cached
-        # (a rerun), so process what's there.
-        produced = (after - before) or after
-        return [track_from_file(p, source=self.name) for p in sorted(produced)]
+        return _run_and_collect(build_spotiflac_command(playlist_url, out_dir), out_dir, self.name)
 
 
 class SpotdlBackend:
@@ -105,15 +94,23 @@ class SpotdlBackend:
         return audio_format in ("flac", "mp3", "m4a")
 
     def fetch(self, playlist_url: str, out_dir: Path) -> list[Track]:
-        cache = cache_dir(out_dir)
-        cache.mkdir(parents=True, exist_ok=True)
-        before = audio_files(cache)
-        _run(build_spotdl_command(playlist_url, cache, self.audio_format))
-        after = audio_files(cache)
-        # Newly downloaded files; if nothing's new, everything was already cached
-        # (a rerun), so process what's there.
-        produced = (after - before) or after
-        return [track_from_file(p, source=self.name) for p in sorted(produced)]
+        command = build_spotdl_command(playlist_url, out_dir, self.audio_format)
+        return _run_and_collect(command, out_dir, self.name)
+
+
+def _run_and_collect(command: list[str], out_dir: Path, source: str) -> list[Track]:
+    """Run a downloader, then return the unsorted files it left in the root.
+
+    A mid-download crash can still leave usable files; process those rather than
+    orphan them. Only re-raise when nothing landed (e.g. the CLI isn't installed).
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        _run(command)
+    except BackendUnavailable:
+        if not staging_files(out_dir):
+            raise
+    return [track_from_file(p, source=source) for p in sorted(staging_files(out_dir))]
 
 
 def select_backends(audio_format: str) -> list[DownloadBackend]:
@@ -130,21 +127,28 @@ def select_backends(audio_format: str) -> list[DownloadBackend]:
 
 
 def fetch_playlist(playlist_url: str, settings: Settings) -> tuple[str, list[Track]]:
-    """Try each backend in order; return (backend_name, tracks) from the first
-    that's available and succeeds. Raises BackendUnavailable if none work.
+    """Download the playlist with the first available backend.
+
+    Returns ``(name, tracks)``; ``(name, [])`` when a backend ran but found
+    nothing new (a rerun). Raises BackendUnavailable only when nothing is
+    installed, so the caller can tell "no new tracks" from "no downloader".
     """
     if "open.spotify.com" not in playlist_url and not playlist_url.startswith("spotify:"):
         raise BackendUnavailable("not a Spotify playlist URL")
-    last_error: BackendUnavailable | None = None
+    ran_name: str | None = None
+    install_error: BackendUnavailable | None = None
     for backend in select_backends(settings.audio_format):
         try:
             tracks = backend.fetch(playlist_url, settings.output_dir)
         except BackendUnavailable as error:
-            last_error = error
+            install_error = error  # this backend's CLI isn't installed or failed
             continue
+        ran_name = backend.name
         if tracks:
             return backend.name, tracks
-        # A backend that runs but downloads nothing (e.g. its providers are down)
-        # shouldn't strand the run — fall through to the next one.
-        last_error = BackendUnavailable(f"{backend.name} downloaded nothing")
-    raise BackendUnavailable(f"no usable download backend: {last_error}")
+    if ran_name is None:
+        # Every backend was unavailable — nothing is installed to download with.
+        raise BackendUnavailable(f"no download backend available: {install_error}")
+    # A backend ran but produced no new files; the caller checks the store to
+    # decide whether that's a real failure or just a rerun with nothing to do.
+    return ran_name, []

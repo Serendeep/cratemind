@@ -77,12 +77,11 @@ def test_missing_cli_raises_backend_unavailable(monkeypatch):
         SpotdlBackend("mp3").fetch(URL, Path("/tmp/cm-nope"))
 
 
-def test_fetch_playlist_falls_through_to_spotdl(monkeypatch, tmp_path):
+def test_fetch_playlist_downloads_into_output_root(monkeypatch, tmp_path):
     settings = Settings(output_dir=tmp_path, audio_format="flac")
-    created = backends.cache_dir(tmp_path) / "song.mp3"  # downloads land in the cache
+    created = tmp_path / "song.mp3"  # downloads land in the output root, not a cache
 
     def fake_run(command):
-        # SpotiFLAC missing -> unavailable; spotdl "downloads" a file
         if command[0] == "spotiflac":
             raise BackendUnavailable("spotiflac missing")
         created.write_bytes(b"\x00")
@@ -107,7 +106,7 @@ def test_fetch_playlist_falls_through_when_backend_downloads_nothing(monkeypatch
     def fake_run(command):
         if command[0] == "spotiflac":
             return  # "succeeds" with zero downloads
-        (backends.cache_dir(tmp_path) / "song.mp3").write_bytes(b"\x00")
+        (tmp_path / "song.mp3").write_bytes(b"\x00")
 
     monkeypatch.setattr(backends, "_run", fake_run)
     monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "S", "artist": "A", "genre": None})
@@ -116,15 +115,58 @@ def test_fetch_playlist_falls_through_when_backend_downloads_nothing(monkeypatch
     assert len(tracks) == 1
 
 
-def test_fetch_returns_only_newly_downloaded_files(monkeypatch, tmp_path):
-    cache = backends.cache_dir(tmp_path)
-    cache.mkdir(parents=True)
-    (cache / "old.flac").write_bytes(b"\x00")  # already downloaded on a previous run
+def test_fetch_playlist_returns_empty_when_nothing_new(monkeypatch, tmp_path):
+    # Installed backend runs but downloads nothing (a rerun, everything sorted).
+    # That's (name, []), NOT an error — the runner decides if it's a real failure.
+    settings = Settings(output_dir=tmp_path, audio_format="mp3")
+    monkeypatch.setattr(backends, "_run", lambda _cmd: None)  # runs, writes nothing
+    name, tracks = fetch_playlist(URL, settings)
+    assert name == "spotdl"
+    assert tracks == []
 
+
+def test_fetch_playlist_raises_when_no_backend_installed(monkeypatch, tmp_path):
+    settings = Settings(output_dir=tmp_path, audio_format="mp3")
+
+    def fake_run(_cmd):
+        raise BackendUnavailable("spotdl is not installed")
+
+    monkeypatch.setattr(backends, "_run", fake_run)
+    with pytest.raises(BackendUnavailable):
+        fetch_playlist(URL, settings)
+
+
+def test_fetch_returns_partial_files_when_backend_crashes(monkeypatch, tmp_path):
+    # A mid-download crash still leaves files in the root — process them, don't orphan.
     def fake_run(_command):
-        (cache / "new.flac").write_bytes(b"\x00")  # this run adds one new track
+        (tmp_path / "partial.flac").write_bytes(b"\x00")
+        raise BackendUnavailable("spotdl crashed mid-download")
 
     monkeypatch.setattr(backends, "_run", fake_run)
     monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "t", "artist": "a", "genre": None})
     tracks = SpotdlBackend("flac").fetch(URL, tmp_path)
-    assert {t.file_path.name for t in tracks if t.file_path} == {"new.flac"}  # cached file skipped
+    assert {t.file_path.name for t in tracks if t.file_path} == {"partial.flac"}
+
+
+def test_fetch_reraises_when_crash_left_nothing(monkeypatch, tmp_path):
+    def fake_run(_command):
+        raise BackendUnavailable("not installed")
+
+    monkeypatch.setattr(backends, "_run", fake_run)
+    with pytest.raises(BackendUnavailable):
+        SpotdlBackend("flac").fetch(URL, tmp_path)
+
+
+def test_fetch_scans_output_root_not_subfolders(monkeypatch, tmp_path):
+    # A prior run's sorted file lives in a subfolder; only the root staging file
+    # is fresh. fetch returns just the root file (spotdl skips the sorted one).
+    (tmp_path / "techno" / "144-151").mkdir(parents=True)
+    (tmp_path / "techno" / "144-151" / "sorted.flac").write_bytes(b"\x00")
+
+    def fake_run(_command):
+        (tmp_path / "new.flac").write_bytes(b"\x00")  # fresh download into the root
+
+    monkeypatch.setattr(backends, "_run", fake_run)
+    monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "t", "artist": "a", "genre": None})
+    tracks = SpotdlBackend("flac").fetch(URL, tmp_path)
+    assert {t.file_path.name for t in tracks if t.file_path} == {"new.flac"}  # subfolder ignored

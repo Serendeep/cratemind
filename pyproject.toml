@@ -21,6 +21,13 @@ dependencies = [
 # Heavy audio stack — installed only when analysis runs locally.
 analysis = ["librosa>=0.10.2", "numpy>=1.26", "soundfile>=0.12"]
 dev = ["pytest>=8"]
+# Audio genre classification (MAEST ONNX model); pulls the librosa stack too.
+audio-genre = [
+    "onnxruntime>=1.26.0",
+    "librosa>=0.10.2",
+    "numpy>=1.26",
+    "soundfile>=0.12",
+]
 
 # NOTE: spotdl and SpotiFLAC are NOT library dependencies. spotdl pins fastapi
 # to an old range that conflicts with a modern stack, so both downloaders are

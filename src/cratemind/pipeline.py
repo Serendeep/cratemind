@@ -14,7 +14,9 @@ from .analysis.bpm import estimate_raw_bpm
 from .analysis.key import estimate_camelot
 from .config import Settings
 from .download.base import Track
-from .genre.resolve import ArtistGenreLookup
+from .genre.audio import lookup_audio_genre
+from .genre.deezer import lookup_deezer_genre
+from .genre.resolve import ArtistGenreLookup, AudioGenreLookup, CoarseGenreLookup
 from .organize.sorter import sort_track
 
 KeyEstimator = Callable[[Path], str]
@@ -26,6 +28,8 @@ def process_track(
     *,
     estimator: Estimator = estimate_raw_bpm,
     key_estimator: KeyEstimator = estimate_camelot,
+    audio_genre_lookup: AudioGenreLookup | None = lookup_audio_genre,
+    coarse_genre_lookup: CoarseGenreLookup | None = lookup_deezer_genre,
     artist_genre_lookup: ArtistGenreLookup | None = None,
 ) -> Track:
     analyzed = analyze_bpm(track, settings, estimator=estimator)
@@ -33,7 +37,13 @@ def process_track(
         return analyzed
     if analyzed.file_path is not None:
         analyzed = analyzed.update(key=key_estimator(analyzed.file_path) or None)
-    return sort_track(analyzed, settings, artist_genre_lookup=artist_genre_lookup)
+    return sort_track(
+        analyzed,
+        settings,
+        audio_genre_lookup=audio_genre_lookup,
+        coarse_genre_lookup=coarse_genre_lookup,
+        artist_genre_lookup=artist_genre_lookup,
+    )
 
 
 def place_from_manifest(

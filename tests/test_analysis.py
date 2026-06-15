@@ -34,5 +34,31 @@ def test_resolve_genre_falls_back_to_artist_lookup():
     assert resolve_genre(track, artist_genre_lookup=lambda _a: "Synthwave") == "synthwave"
 
 
-def test_resolve_genre_returns_none_when_nothing_found():
-    assert resolve_genre(_track(genre=None)) is None
+def test_resolve_genre_prefers_audio_over_coarse_and_artist():
+    # Audio gives the specific sub-genre; it must win over the coarse Deezer net.
+    track = _track(genre=None, artist="T78", file_path=Path("/x.flac"))
+    genre = resolve_genre(
+        track,
+        audio_genre_lookup=lambda _p: "Hard Techno",
+        coarse_genre_lookup=lambda _a, _t: "electronic",
+    )
+    assert genre == "hard techno"
+
+
+def test_resolve_genre_uses_coarse_when_audio_blank():
+    track = _track(genre=None, artist="T78", file_path=Path("/x.flac"))
+    genre = resolve_genre(
+        track,
+        audio_genre_lookup=lambda _p: None,
+        coarse_genre_lookup=lambda _a, _t: "electronic",
+    )
+    assert genre == "electronic"
+
+
+def test_resolve_genre_falls_back_to_artist_name_when_nothing_found():
+    # User decision: group by artist instead of dumping into `unsorted`.
+    assert resolve_genre(_track(genre=None, artist="T78")) == "T78"
+
+
+def test_resolve_genre_is_none_only_without_artist():
+    assert resolve_genre(_track(genre=None, artist="")) is None

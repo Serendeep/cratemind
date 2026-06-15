@@ -1,4 +1,7 @@
+import pytest
+
 from cratemind.config import Settings
+from cratemind.download.backends import BackendUnavailable
 from cratemind.download.base import Track
 from cratemind.runner import run_crate
 from cratemind.store.db import CrateStore
@@ -81,3 +84,37 @@ def test_run_emits_progress_updates():
     )
     assert "downloading" in events
     assert "sorted" in events
+
+
+def test_run_resumes_from_store_when_fetch_is_empty():
+    # Rerun: spotdl re-downloads nothing (everything already sorted), so fetch
+    # returns []. The crate must show the stored tracks, not error or go blank.
+    store = CrateStore()
+    store.upsert_track(
+        "u",
+        Track(spotify_id="1", title="T", artist="A", genre="techno",
+              bpm=150, bpm_bucket="144-151", status="sorted"),
+    )
+    emitted: list[str] = []
+
+    def fetch(_url, _settings):
+        return "spotdl", []
+
+    name, results = run_crate(
+        "u", Settings(), store, fetch=fetch,
+        process=lambda t, _s: t, on_update=lambda t: emitted.append(t.spotify_id),
+    )
+    assert name == "spotdl"
+    assert [t.spotify_id for t in results] == ["1"]
+    assert results[0].genre == "techno"
+    assert emitted == ["1"]  # the existing crate was shown
+
+
+def test_run_raises_when_fetch_empty_and_store_empty():
+    store = CrateStore()
+
+    def fetch(_url, _settings):
+        return "spotdl", []
+
+    with pytest.raises(BackendUnavailable):
+        run_crate("u", Settings(), store, fetch=fetch, process=lambda t, _s: t)

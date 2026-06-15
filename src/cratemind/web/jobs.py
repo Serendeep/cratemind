@@ -32,7 +32,7 @@ class Job:
     status: str = "running"  # running | done | error
     error: str | None = None
     backend: str | None = None
-    downloaded: int = 0  # files in the cache, for live download feedback
+    downloaded: int = 0  # new files downloaded this run, for live progress feedback
     tracks: list[Track] = field(default_factory=list)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -74,14 +74,14 @@ class JobManager:
             stop = threading.Event()
 
             def monitor() -> None:
-                # Count files appearing in the cache so the UI can show live
-                # download progress without parsing the downloader's output.
-                from ..download.backends import audio_files, cache_dir
+                # Count unsorted files in the output root (sorted ones live in
+                # subfolders) so the UI shows live download progress. Root-only
+                # avoids counting a prior run's already-sorted tracks.
+                from ..download.backends import staging_files
 
-                cache = cache_dir(settings.output_dir)
                 while not stop.is_set():
                     with job.lock:
-                        job.downloaded = len(audio_files(cache))
+                        job.downloaded = len(staging_files(settings.output_dir))
                     stop.wait(2)
 
             threading.Thread(target=monitor, daemon=True).start()

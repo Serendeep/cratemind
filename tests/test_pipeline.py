@@ -28,23 +28,25 @@ def test_sort_track_moves_into_genre_bucket(tmp_path):
     assert result.status == "sorted"
     assert result.file_path == out / "synthwave" / "112-119" / "song.flac"
     assert result.file_path.exists()
-    assert src.exists()  # cached original kept so reruns skip the download
+    assert not src.exists()  # moved out of the root, not copied — one file per track
 
 
-def test_sort_track_uses_unsorted_without_genre(tmp_path):
+def test_sort_track_groups_by_artist_without_genre(tmp_path):
+    # No genre resolves (no lookups injected) → group by artist, not `unsorted`.
     out = tmp_path / "out"
     src = _make_file(tmp_path)
     track = Track(
         spotify_id="1",
         title="x",
-        artist="y",
+        artist="Timmo",
         genre=None,
         bpm=96,
         bpm_bucket="96-103",
         file_path=src,
     )
     result = sort_track(track, Settings(output_dir=out))
-    assert result.file_path == out / "unsorted" / "96-103" / "song.flac"
+    assert result.file_path == out / "Timmo" / "96-103" / "song.flac"
+    assert result.genre == "Timmo"
 
 
 def test_name_collision_gets_suffix(tmp_path):
