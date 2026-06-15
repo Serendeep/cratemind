@@ -136,6 +136,27 @@ def test_fetch_playlist_raises_when_no_backend_installed(monkeypatch, tmp_path):
         fetch_playlist(URL, settings)
 
 
+def test_fetch_reports_undownloaded_songs_as_failed(monkeypatch, tmp_path):
+    import json
+
+    def fake_run(command):
+        if command[1] == "save":  # spotdl save -> write the expected tracklist
+            save_file = Path(command[command.index("--save-file") + 1])
+            save_file.write_text(
+                json.dumps([{"name": "Got It", "artist": "A"}, {"name": "Missing", "artist": "B"}])
+            )
+        else:  # download -> only one of the two songs lands
+            (tmp_path / "A - Got It.flac").write_bytes(b"\x00")
+
+    monkeypatch.setattr(backends, "_run", fake_run)
+    monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "Got It", "artist": "A", "genre": None})
+    tracks = SpotdlBackend("flac").fetch(URL, tmp_path)
+    statuses = {t.title: t.status for t in tracks}
+    assert statuses["Got It"] == "downloading"  # the file that landed
+    assert statuses["Missing"] == "failed"  # spotdl couldn't get it
+    assert not (tmp_path / backends.TRACKLIST_FILE).exists()  # tracklist cleaned up
+
+
 def test_fetch_returns_partial_files_when_backend_crashes(monkeypatch, tmp_path):
     # A mid-download crash still leaves files in the root — process them, don't orphan.
     def fake_run(_command):

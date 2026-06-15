@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from .config import Settings
-from .download.backends import BackendUnavailable, fetch_playlist
+from .download.backends import BackendUnavailable, fetch_playlist, normalize_title
 from .download.base import Track
 from .manifest import TrackEntry
 from .pipeline import place_from_manifest, process_track
@@ -32,17 +32,30 @@ def run_crate(
     on_update: OnUpdate | None = None,
     overrides: dict[str, TrackEntry] | None = None,
 ) -> tuple[str, list[Track]]:
-    backend_name, downloaded = fetch(playlist_url, settings)
-    # Tracks already sorted on a prior run keep their analysis (bpm/genre/key) in
-    # the store; only freshly-downloaded files (sitting in the output root) need
-    # processing. fetch returns an empty list on a rerun where nothing was new.
+    backend_name, fetched = fetch(playlist_url, settings)
+    # fetch returns downloaded files plus failed stubs (playlist songs spotdl
+    # couldn't get, file_path None, status "failed"). Tracks already sorted on a
+    # prior run keep their analysis in the store; only new files need processing.
     stored = store.tracks(playlist_url)
     sorted_before = [t for t in stored if t.status == "sorted"]
     done_ids = {t.spotify_id for t in sorted_before}
-    new_tracks = [t for t in downloaded if t.spotify_id not in done_ids]
 
-    if not new_tracks and not sorted_before:
-        # Nothing downloaded this run and nothing sorted on a prior run — the
+    failed_stubs = [t for t in fetched if t.status == "failed" and t.file_path is None]
+    downloads = [t for t in fetched if not (t.status == "failed" and t.file_path is None)]
+    new_tracks = [t for t in downloads if t.spotify_id not in done_ids]
+
+    # Only surface a failure for a song we don't already have (this run or a prior
+    # sorted run), matched by title so artist-string differences don't false-flag.
+    have_titles = {normalize_title(t.title) for t in sorted_before}
+    have_titles |= {normalize_title(t.title) for t in downloads}
+    failures = [
+        t
+        for t in failed_stubs
+        if normalize_title(t.title) not in have_titles and t.spotify_id not in done_ids
+    ]
+
+    if not new_tracks and not sorted_before and not failures:
+        # Nothing downloaded this run and nothing from a prior run — the
         # downloader genuinely produced nothing to show.
         raise BackendUnavailable(f"{backend_name} downloaded no tracks")
 
@@ -74,4 +87,11 @@ def run_crate(
         if on_update:
             on_update(done)
         results.append(done)
+
+    # Songs spotdl couldn't download — record and show them so they aren't silent.
+    for track in failures:
+        store.upsert_track(playlist_url, track)
+        results.append(track)
+        if on_update:
+            on_update(track)
     return backend_name, results

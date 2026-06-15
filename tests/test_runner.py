@@ -110,6 +110,37 @@ def test_run_resumes_from_store_when_fetch_is_empty():
     assert emitted == ["1"]  # the existing crate was shown
 
 
+def test_run_surfaces_failed_downloads():
+    from pathlib import Path
+
+    store = CrateStore()
+
+    def fetch(_url, _settings):
+        return "spotdl", [
+            Track(spotify_id="1", title="Got", artist="A", file_path=Path("/x.flac")),
+            Track(spotify_id="2", title="Missing", artist="B", status="failed"),
+        ]
+
+    _name, results = run_crate(
+        "u", Settings(), store, fetch=fetch, process=lambda t, _s: t.update(status="sorted")
+    )
+    statuses = {t.title: t.status for t in results}
+    assert statuses["Missing"] == "failed"
+    assert store.status_of("u", "2") == "failed"
+
+
+def test_run_does_not_reflag_sorted_track_as_failed():
+    store = CrateStore()
+    store.upsert_track("u", Track(spotify_id="1", title="Song", artist="A", status="sorted"))
+
+    def fetch(_url, _settings):
+        # Rerun: nothing new downloaded, but the expected list still names "Song".
+        return "spotdl", [Track(spotify_id="9", title="Song", artist="A", status="failed")]
+
+    _name, results = run_crate("u", Settings(), store, fetch=fetch, process=lambda t, _s: t)
+    assert [t.status for t in results] == ["sorted"]  # the failed stub was suppressed
+
+
 def test_run_raises_when_fetch_empty_and_store_empty():
     store = CrateStore()
 

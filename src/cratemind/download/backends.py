@@ -9,15 +9,22 @@ the orchestrator falls through to the next one.
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
 
 from ..config import Settings
 from .base import DownloadBackend, Track
-from .tags import track_from_file
+from .tags import stable_id, track_from_file
 
 AUDIO_SUFFIXES = {".flac", ".mp3", ".m4a", ".opus", ".ogg", ".wav"}
+TRACKLIST_FILE = ".cratemind-tracklist.spotdl"
+
+
+def normalize_title(title: str | None) -> str:
+    """Lowercase + collapse whitespace, for matching tracks across sources."""
+    return " ".join((title or "").lower().split())
 
 
 class BackendUnavailable(RuntimeError):
@@ -94,8 +101,60 @@ class SpotdlBackend:
         return audio_format in ("flac", "mp3", "m4a")
 
     def fetch(self, playlist_url: str, out_dir: Path) -> list[Track]:
+        # Capture the playlist's full tracklist first (metadata only, no download)
+        # so we can tell which songs spotdl couldn't fetch and report them.
+        save_file = out_dir / TRACKLIST_FILE
+        _save_tracklist(playlist_url, save_file)
         command = build_spotdl_command(playlist_url, out_dir, self.audio_format)
-        return _run_and_collect(command, out_dir, self.name)
+        downloaded = _run_and_collect(command, out_dir, self.name)
+        failed = _failed_from_expected(save_file, downloaded, self.name)
+        save_file.unlink(missing_ok=True)
+        return downloaded + failed
+
+
+def _save_tracklist(playlist_url: str, save_file: Path) -> None:
+    """Write the playlist's resolved tracklist to ``save_file`` (best effort)."""
+    save_file.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        _run(["spotdl", "save", playlist_url, "--save-file", str(save_file)])
+    except BackendUnavailable:
+        pass  # no tracklist → failed downloads just won't be surfaced this run
+
+
+def _expected_tracks(save_file: Path, source: str) -> list[Track]:
+    """Parse a spotdl save-file into Track stubs marked failed (no file yet)."""
+    if not save_file.exists():
+        return []
+    try:
+        songs = json.loads(save_file.read_text())
+    except (json.JSONDecodeError, OSError):
+        return []
+    tracks: list[Track] = []
+    for song in songs:
+        name = song.get("name")
+        artist = song.get("artist") or next(iter(song.get("artists") or []), None)
+        if not name or not artist:
+            continue
+        tracks.append(
+            Track(
+                spotify_id=stable_id(artist, name),
+                title=name,
+                artist=artist,
+                source=source,
+                status="failed",
+                file_path=None,
+            )
+        )
+    return tracks
+
+
+def _failed_from_expected(save_file: Path, downloaded: list[Track], source: str) -> list[Track]:
+    """Expected songs that have no matching downloaded file, as failed Tracks."""
+    expected = _expected_tracks(save_file, source)
+    if not expected:
+        return []
+    got = {normalize_title(t.title) for t in downloaded}
+    return [e for e in expected if normalize_title(e.title) not in got]
 
 
 def _run_and_collect(command: list[str], out_dir: Path, source: str) -> list[Track]:
