@@ -27,8 +27,9 @@ your own machine, with no account to sign up for.
 - **Resumes instantly** — re-running a playlist skips tracks already sorted.
 - **Share a crate** as a small `crate.json` (the analysis, not the audio) and
   re-import it to rebuild the same folders without re-analyzing.
-- **Runs on your own machine.** No account. Your audio stays local; only the
-  coarse genre fallback looks a track up on Deezer by name.
+- **Runs on your own machine.** No account, and by default nothing about your
+  tracks leaves it. You can opt into a Deezer genre lookup that sends only the
+  track name.
 
 ## What you get
 
@@ -157,9 +158,10 @@ uv sync --extra audio-genre
 uv run cratemind download-model
 ```
 
-Without it, cratemind falls back to a coarse Deezer lookup and then to grouping by
-artist. The model runs locally on the CPU. The Deezer fallback sends only the
-track's name, never the audio.
+Without it, cratemind groups tracks by artist. The model runs locally on the CPU.
+You can also opt into a coarse Deezer lookup (off by default, a checkbox under
+**advanced**) for the tail the model misses; it sends only the track's name,
+never the audio.
 
 ---
 

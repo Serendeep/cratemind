@@ -60,6 +60,36 @@ def test_name_collision_gets_suffix(tmp_path):
     assert result.file_path.name == "a (1).flac"
 
 
+def test_process_track_skips_deezer_when_online_genre_off(tmp_path):
+    src = _make_file(tmp_path, "t.flac")
+    called: list[tuple[str, str]] = []
+    track = Track(spotify_id="1", title="x", artist="Timmo", genre=None, file_path=src)
+    result = process_track(
+        track,
+        Settings(output_dir=tmp_path / "out", online_genre=False),
+        estimator=lambda _p: 130.0,
+        key_estimator=lambda _p: "8A",
+        audio_genre_lookup=lambda _p: None,
+        coarse_genre_lookup=lambda a, t: called.append((a, t)) or "electronic",
+    )
+    assert called == []  # Deezer not consulted when the toggle is off
+    assert result.genre == "Timmo"  # fell through to artist grouping
+
+
+def test_process_track_uses_deezer_when_online_genre_on(tmp_path):
+    src = _make_file(tmp_path, "t.flac")
+    track = Track(spotify_id="1", title="x", artist="Timmo", genre=None, file_path=src)
+    result = process_track(
+        track,
+        Settings(output_dir=tmp_path / "out", online_genre=True),
+        estimator=lambda _p: 130.0,
+        key_estimator=lambda _p: "8A",
+        audio_genre_lookup=lambda _p: None,
+        coarse_genre_lookup=lambda _a, _t: "electronic",
+    )
+    assert result.genre == "electronic"
+
+
 def test_process_track_end_to_end(tmp_path):
     out = tmp_path / "out"
     src = _make_file(tmp_path, "track.flac")

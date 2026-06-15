@@ -21,6 +21,9 @@ class Settings:
     octave_low: int = 70
     octave_high: int = 180
     bucket_width: int = 8
+    # Off by default: the genre fallback that queries Deezer by track name. The
+    # local audio model covers most tracks; this trades some privacy for the tail.
+    online_genre: bool = False
 
     def __post_init__(self) -> None:
         if self.audio_format not in AUDIO_FORMATS:

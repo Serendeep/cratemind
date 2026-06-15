@@ -53,6 +53,7 @@ def test_index_renders_form_and_favicon():
     assert response.status_code == 200
     assert "cratemind" in response.text
     assert 'name="playlist_url"' in response.text
+    assert 'name="online_genre"' in response.text  # the opt-in Deezer toggle
     assert "favicon.svg" in response.text
     assert "<main" in response.text and "<footer" in response.text  # semantic, sticky footer
 

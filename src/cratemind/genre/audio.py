@@ -26,7 +26,7 @@ _HOP = 256
 _MEL_BANDS = 96
 _PATCH_FRAMES = 626  # the model's fixed time dimension (~10 s at 16 kHz / hop 256)
 _MAX_PATCHES = 6  # cap per track so a long mix doesn't run dozens of inferences
-_MIN_CONFIDENCE = 0.10  # below this the model is guessing — defer to the fallback
+_MIN_CONFIDENCE = 0.10  # below this the model is guessing; defer to the fallback
 # Discogs20 training-set normalization constants (from the MAEST preprocessor).
 _NORM_MEAN = 2.06755686098554
 _NORM_STD = 1.268292820667291

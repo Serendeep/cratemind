@@ -79,6 +79,7 @@ def start_run(
     octave_low: int = Form(70),
     octave_high: int = Form(180),
     bucket_width: int = Form(8),
+    online_genre: bool = Form(False),
 ) -> HTMLResponse:
     settings = Settings(
         output_dir=Path(output_dir).expanduser(),
@@ -87,6 +88,7 @@ def start_run(
         octave_low=octave_low,
         octave_high=octave_high,
         bucket_width=bucket_width,
+        online_genre=online_genre,
     )
     save_settings(settings)
     job = jobs.start(playlist_url, settings)

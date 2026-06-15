@@ -37,11 +37,14 @@ def process_track(
         return analyzed
     if analyzed.file_path is not None:
         analyzed = analyzed.update(key=key_estimator(analyzed.file_path) or None)
+    # The Deezer fallback is the only step that leaves the machine; honor the
+    # per-run opt-in so it stays off unless the user asked for it.
+    coarse = coarse_genre_lookup if settings.online_genre else None
     return sort_track(
         analyzed,
         settings,
         audio_genre_lookup=audio_genre_lookup,
-        coarse_genre_lookup=coarse_genre_lookup,
+        coarse_genre_lookup=coarse,
         artist_genre_lookup=artist_genre_lookup,
     )
 

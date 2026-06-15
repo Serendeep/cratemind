@@ -57,6 +57,8 @@ details[open] summary::before{content:"–"}
 .adv .pair{display:flex;align-items:center;gap:6px}
 .adv input{width:62px;text-align:center}
 .adv .pair span{color:var(--t4);font-family:'JetBrains Mono',monospace;font-size:12px}
+.adv .chk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);max-width:240px;cursor:pointer}
+.adv .chk input{width:auto}
 .subrow{display:flex;align-items:center;gap:14px;margin-top:18px}
 .subrow .hint{color:var(--t4);font-size:12px}
 .empty{margin-top:30px;border:1px dashed var(--line);border-radius:var(--r);padding:26px;text-align:center;color:var(--t4);font-size:13px}
@@ -186,6 +188,10 @@ footer{margin-top:36px;border-top:1px solid var(--line-2);padding:22px 0 44px}
         <div>
           <div class="f">bucket width</div>
           <div class="pair"><input type="text" name="bucket_width" value="{{ defaults.bucket_width }}"><span>bpm bands</span></div>
+        </div>
+        <div>
+          <div class="f">online genre lookup</div>
+          <label class="chk"><input type="checkbox" name="online_genre" value="true"{% if defaults.online_genre %} checked{% endif %}> ask Deezer for genres the audio model misses (sends the track name)</label>
         </div>
       </div>
     </details>

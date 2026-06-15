@@ -1,3 +1,4 @@
+from cratemind.genre import deezer
 from cratemind.genre.deezer import lookup_deezer_genre
 
 
@@ -49,3 +50,20 @@ def test_deezer_swallows_fetch_errors():
         raise RuntimeError("network down")
 
     assert lookup_deezer_genre("X", "Y", fetch_json=boom) is None
+
+
+def test_deezer_default_path_is_cached(monkeypatch):
+    deezer._cached_lookup.cache_clear()
+    calls = {"n": 0}
+
+    def fake(url: str) -> dict:
+        calls["n"] += 1
+        if "/search" in url:
+            return {"data": [{"album": {"id": 7}}]}
+        return {"genres": {"data": [{"name": "Techno"}]}}
+
+    monkeypatch.setattr(deezer, "_default_fetch_json", fake)
+    assert deezer._cached_lookup("T78", "Bombacid") == "techno"
+    assert deezer._cached_lookup("T78", "Bombacid") == "techno"
+    assert calls["n"] == 2  # search + album once; the repeat is served from cache
+    deezer._cached_lookup.cache_clear()

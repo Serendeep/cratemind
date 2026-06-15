@@ -40,6 +40,7 @@ def load_settings() -> Settings:
             octave_low=int(data.get("octave_low", 70)),
             octave_high=int(data.get("octave_high", 180)),
             bucket_width=int(data.get("bucket_width", 8)),
+            online_genre=bool(data.get("online_genre", False)),
         )
     except (json.JSONDecodeError, KeyError, ValueError, OSError):
         return Settings()  # corrupt or stale prefs -> sane defaults
@@ -55,6 +56,7 @@ def save_settings(settings: Settings) -> None:
                 "octave_low": settings.octave_low,
                 "octave_high": settings.octave_high,
                 "bucket_width": settings.bucket_width,
+                "online_genre": settings.online_genre,
             },
             indent=2,
         )

@@ -8,6 +8,7 @@ injected so tests don't hit the network.
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import lru_cache
 from typing import Any
 from urllib.parse import urlencode
 
@@ -48,17 +49,7 @@ def _coarse_label(name: str | None) -> str | None:
     return _COARSE.get(key, key) or None
 
 
-def lookup_deezer_genre(
-    artist: str,
-    title: str,
-    *,
-    fetch_json: JsonFetcher = _default_fetch_json,
-) -> str | None:
-    """Best-effort coarse genre for (artist, title), or None.
-
-    Resolves the track → its album → the album's first genre, then folds that to
-    a clean coarse label. Any miss or error returns None.
-    """
+def _do_lookup(artist: str, title: str, fetch_json: JsonFetcher) -> str | None:
     query = urlencode({"q": f'artist:"{artist}" track:"{title}"'})
     try:
         results = fetch_json(f"{_SEARCH}?{query}")
@@ -74,3 +65,25 @@ def lookup_deezer_genre(
     except Exception:
         return None
     return _coarse_label(raw)
+
+
+@lru_cache(maxsize=512)
+def _cached_lookup(artist: str, title: str) -> str | None:
+    return _do_lookup(artist, title, _default_fetch_json)
+
+
+def lookup_deezer_genre(
+    artist: str,
+    title: str,
+    *,
+    fetch_json: JsonFetcher = _default_fetch_json,
+) -> str | None:
+    """Best-effort coarse genre for (artist, title), or None.
+
+    Resolves the track → its album → the album's first genre, then folds that to a
+    clean coarse label. Real lookups are cached in-process so repeats and reruns
+    don't re-hit the API; an injected fetcher (tests) bypasses the cache.
+    """
+    if fetch_json is _default_fetch_json:
+        return _cached_lookup(artist, title)
+    return _do_lookup(artist, title, fetch_json)
