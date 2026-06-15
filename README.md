@@ -2,11 +2,12 @@
 
 [![CI](https://github.com/Serendeep/cratemind/actions/workflows/ci.yml/badge.svg)](https://github.com/Serendeep/cratemind/actions/workflows/ci.yml)
 
-Paste a Spotify playlist, get a folder of tracks sorted by genre and tempo.
+**Auto-sort any Spotify playlist into DJ-ready crates by genre and tempo.**
 
-cratemind downloads each song, works out its BPM and genre, and files it into
-folders like `House/120-127bpm/`. Everything runs on your own computer. No
-website, no account, nothing uploaded.
+cratemind downloads each track, detects its BPM, key, and genre, and files it
+into folders like `hard techno/140-147/`. Built for DJs and crate-diggers who
+want a library sorted the way they mix. The audio is downloaded and analyzed on
+your own machine, with no account to sign up for.
 
 <p align="center">
   <img src="docs/images/cratemind.png" width="760"
@@ -18,13 +19,32 @@ website, no account, nothing uploaded.
 - **Downloads a whole Spotify playlist** with spotdl, in the format you pick.
 - **Detects BPM and Camelot key** for every track — for tempo sorting and
   harmonic mixing.
-- **Resolves the genre** and files each track into folders you template, like
-  `House/120-127bpm/`.
+- **Identifies the genre from the audio.** An on-device model reads the real
+  electronic sub-genre (hard techno, tech house, trance) straight off the
+  waveform, since underground tracks rarely carry a usable genre tag.
+- **Sorts into folders you template**, like `hard techno/140-147/`.
 - **Live progress in the browser** — and reloading the page reconnects to the run.
-- **Resumes instantly** — re-running a playlist skips anything already downloaded.
+- **Resumes instantly** — re-running a playlist skips tracks already sorted.
 - **Share a crate** as a small `crate.json` (the analysis, not the audio) and
   re-import it to rebuild the same folders without re-analyzing.
-- **Runs entirely on your computer.** No website, no account, nothing uploaded.
+- **Runs on your own machine.** No account. Your audio stays local; only the
+  coarse genre fallback looks a track up on Deezer by name.
+
+## What you get
+
+```
+~/Music/cratemind/
+├── hard techno/
+│   ├── 140-147/
+│   └── 148-155/
+├── techno/
+│   └── 132-139/
+└── tech house/
+    └── 124-131/
+```
+
+Each track lands in a `{genre}/{tempo}/` folder. When the model isn't confident
+and no genre can be found, the track is grouped by artist instead — never lost.
 
 ---
 
@@ -42,14 +62,15 @@ cd cratemind
 
 ## Setup (one command)
 
-From the cratemind folder, run the setup script for your system. It installs the
-tools cratemind needs (uv, ffmpeg, spotdl) and sets up the app, pointing you to a
-manual download for anything it can't install on its own:
+From the cratemind folder, run the setup script for your system. It walks through
+each tool (uv, ffmpeg, spotdl), installs the app, and asks whether to set up the
+genre model now. Anything already installed is left alone:
 
 - macOS / Linux: `./setup.sh`
 - Windows (PowerShell): `./setup.ps1`
 
-Then jump to [Run it](#run-it). Prefer to install by hand? See
+Add `--yes` (or `-Yes` on Windows) to accept the defaults without prompts. Then
+jump to [Run it](#run-it). Prefer to install by hand? See
 [Manual setup](#manual-setup) below.
 
 ---
@@ -110,20 +131,35 @@ a folder, and hit **Run**.
   `~/Music/cratemind`.
 - **Format** — FLAC (best quality) by default; MP3 and M4A are smaller.
 - **Folder template** — how folders get named. `{genre}/{bpm_bucket}/` gives you
-  `House/120-127bpm/`. You can mix and match these tokens: `{genre}`,
+  `hard techno/140-147/`. You can mix and match these tokens: `{genre}`,
   `{bpm_bucket}`, `{bpm}`, `{key}`, `{artist}`, `{year}`. `{key}` is the Camelot
   code (like `8A`) for harmonic mixing, also shown next to each track's BPM.
 - **Advanced** — the BPM window (used to correct half- or double-tempo
   mistakes) and how wide each tempo band is.
 
-Tracks appear in a live list as they download, get analyzed, and get sorted.
-Anything cratemind can't find a genre for goes into an `unsorted` folder, so
-nothing ever gets lost.
+Tracks appear in a live list as they download, get analyzed, and get sorted. When
+no genre can be found for a track, it's grouped by artist instead — never lost.
 
-Re-running the same playlist is cheap: cratemind keeps a `cratemind-cache` folder
-inside your output folder with the original downloads, so it skips anything it
-already has. You can delete that folder to reclaim space; it just re-downloads
-next time.
+Re-running a playlist is cheap: each track is downloaded straight into your output
+folder and moved into its genre folder, so a re-run skips everything that's
+already sorted and only fetches what's new.
+
+---
+
+## Genre detection (audio model)
+
+cratemind reads the genre from the audio with an on-device model, so it works on
+underground tracks that have no genre tag. The model is an optional ~344 MB
+download — fetch it once:
+
+```
+uv sync --extra audio-genre
+uv run cratemind download-model
+```
+
+Without it, cratemind falls back to a coarse Deezer lookup and then to grouping by
+artist. The model runs locally on the CPU. The Deezer fallback sends only the
+track's name, never the audio.
 
 ---
 
@@ -139,9 +175,8 @@ a free host (catbox.moe or 0x0.st) to get a link you can pass around.
 ## Audio quality
 
 cratemind downloads good-quality audio with spotdl in the format you pick (FLAC,
-MP3, or M4A). True lossless from Tidal/Qobuz is on the [Roadmap](#roadmap): it
-relied on SpotiFLAC's free providers, which are currently too unreliable to
-depend on, so it's paused for now.
+MP3, or M4A). True lossless from Tidal/Qobuz is paused for now; see the
+[Roadmap](#roadmap).
 
 ---
 
