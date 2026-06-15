@@ -1,8 +1,8 @@
 {% if job.status == "error" %}
 <div class="err">Couldn't run: {{ job.error }}. Make sure <span class="mono">spotdl</span> and <span class="mono">ffmpeg</span> are installed (see the README).</div>
 {% else %}
-<div id="run"{% if job.status == "running" %} hx-get="/runs/{{ job.id }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
-  {% if not tracks %}
+<div id="run"{% if job.status == "running" %} hx-get="/runs/{{ job.id }}?page={{ page.number }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if not page.tracks %}
   <div class="dl">
     <div class="lbl">Downloading… <b>{{ job.downloaded }}</b> track{{ '' if job.downloaded == 1 else 's' }} ready. The first tracks can take a minute or two.</div>
     <div class="prog indet"><i></i></div>
@@ -18,7 +18,7 @@
     <div class="head">
       <div>status</div><div>track</div><div style="text-align:right">bpm</div><div>genre</div><div style="text-align:right">source</div>
     </div>
-    {% for t in tracks %}
+    {% for t in page.tracks %}
     {% set cls = "sorted" if t.status == "sorted" else ("failed" if t.status == "failed" else ("queued" if t.status == "queued" else "work")) %}
     <div class="tr{{ ' queued' if t.status == 'queued' else '' }}">
       <div class="st {{ cls }}"><span class="d"></span>{{ t.status }}</div>
@@ -37,13 +37,21 @@
     {% endfor %}
   </div>
 
+  {% if page.total > 1 %}
+  <div class="pager">
+    <button class="btn sm" {% if page.number <= 1 %}disabled{% endif %} hx-get="/runs/{{ job.id }}?page={{ page.number - 1 }}" hx-target="#run" hx-swap="outerHTML">prev</button>
+    <span class="pageinfo">page {{ page.number }} of {{ page.total }}</span>
+    <button class="btn sm" {% if page.number >= page.total %}disabled{% endif %} hx-get="/runs/{{ job.id }}?page={{ page.number + 1 }}" hx-target="#run" hx-swap="outerHTML">next</button>
+  </div>
+  {% endif %}
+
   {% if job.status != "running" %}
   <div class="label">// crate summary</div>
   <div class="stats">
     <div class="stat"><div class="v">{{ summary.total }}</div><div class="k">tracks</div></div>
-    <div class="stat"><div class="v acc">{{ summary.lossless_pct }}%</div><div class="k">lossless</div></div>
+    {% if summary.has_lossless %}<div class="stat"><div class="v acc">{{ summary.lossless_pct }}%</div><div class="k">lossless</div></div>{% endif %}
     <div class="stat"><div class="v">{{ summary.genres }}</div><div class="k">genres</div></div>
-    <div class="stat"><div class="v">{{ summary.unsorted }}</div><div class="k">unsorted</div></div>
+    <div class="stat"><div class="v">{{ summary.by_artist }}</div><div class="k">by artist</div></div>
     <div class="stat"><div class="v">{{ summary.failed }}</div><div class="k">failed</div></div>
   </div>
   {% if summary.bins %}

@@ -15,7 +15,7 @@ from ..manifest import CrateManifest
 from ..prefs import load_settings, save_settings
 from ..share import share_crate
 from .jobs import JobManager
-from .view import ordered_tracks, summarize
+from .view import paginate, summarize
 
 _BASE = Path(__file__).parent
 templates = Jinja2Templates(directory=str(_BASE / "templates"))
@@ -55,7 +55,7 @@ def index(request: Request) -> HTMLResponse:
     )
 
 
-def _results(request: Request, job) -> HTMLResponse:
+def _results(request: Request, job, page: int = 1) -> HTMLResponse:
     with job.lock:  # job.tracks is replaced wholesale by the worker thread
         tracks = list(job.tracks)
     return templates.TemplateResponse(
@@ -63,7 +63,7 @@ def _results(request: Request, job) -> HTMLResponse:
         "_results.html",
         {
             "job": job,
-            "tracks": ordered_tracks(tracks),
+            "page": paginate(tracks, page),
             "summary": summarize(tracks),
         },
     )
@@ -122,11 +122,11 @@ async def import_crate(
 
 
 @app.get("/runs/{job_id}", response_class=HTMLResponse)
-def poll_run(request: Request, job_id: str) -> HTMLResponse:
+def poll_run(request: Request, job_id: str, page: int = 1) -> HTMLResponse:
     job = jobs.get(job_id)
     if job is None:
         return HTMLResponse("<div class='err'>run not found</div>", status_code=404)
-    return _results(request, job)
+    return _results(request, job, page)
 
 
 @app.get("/runs/{job_id}/export")
