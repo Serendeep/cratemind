@@ -1,0 +1,26 @@
+name: pr-build
+
+# Build a wheel + sdist for every PR and attach them as a downloadable artifact,
+# so a reviewer or tester can grab a "preview" build from the PR's Checks tab.
+# Needs no secrets, so it also runs for pull requests from forks.
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build wheel + sdist
+        run: uv build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cratemind-dist-pr${{ github.event.number }}
+          path: dist/*
+          if-no-files-found: error

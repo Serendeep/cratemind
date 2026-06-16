@@ -4,7 +4,8 @@ On startup it makes ffmpeg findable for spotdl (see `ffmpeg.ensure_ffmpeg_on_pat
 so users never edit PATH. Subcommands:
   download-model  fetch the MAEST audio-genre model (~330 MB) into the cache
   setup-ffmpeg    fetch spotdl's portable ffmpeg into the cache (no system install)
-With no arguments it runs the server.
+  update          download + apply the latest GitHub release (no git needed)
+With no arguments it runs the server (and notes if a newer version is out).
 """
 
 from __future__ import annotations
@@ -32,9 +33,18 @@ def main() -> None:
             except ffmpeg.FFmpegUnavailable as exc:
                 sys.exit(str(exc))  # actionable one-liner, not a traceback
             return
-        hint = "(try no arguments, download-model, or setup-ffmpeg)"
+        if sys.argv[1] == "update":
+            from . import update
+
+            print("Checking for updates…")
+            print(update.run_update())
+            return
+        hint = "(try no arguments, download-model, setup-ffmpeg, or update)"
         sys.exit(f"unknown command: {sys.argv[1]!r} {hint}")
 
+    from . import update
+
+    update.notify_if_due()  # throttled (<=1/day), best-effort; never blocks launch
     import uvicorn
 
     uvicorn.run("cratemind.web.app:app", host="127.0.0.1", port=8000)
