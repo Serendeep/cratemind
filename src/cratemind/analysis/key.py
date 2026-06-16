@@ -20,6 +20,23 @@ CAMELOT_MAJOR = {0: "8B", 1: "3B", 2: "10B", 3: "5B", 4: "12B", 5: "7B",
 CAMELOT_MINOR = {0: "5A", 1: "12A", 2: "7A", 3: "2A", 4: "9A", 5: "4A",
                  6: "11A", 7: "6A", 8: "1A", 9: "8A", 10: "3A", 11: "10A"}
 
+# Pitch class -> note name (sharps), for musical key notation.
+_NOTE_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+# Camelot code -> musical key string, inverting the maps above (e.g. "8A" -> "Am").
+_MUSICAL_FROM_CAMELOT = {
+    **{code: _NOTE_NAMES[pc] for pc, code in CAMELOT_MAJOR.items()},
+    **{code: f"{_NOTE_NAMES[pc]}m" for pc, code in CAMELOT_MINOR.items()},
+}
+
+
+def camelot_to_musical(camelot: str) -> str:
+    """Convert a Camelot code to a musical key (e.g. "8A" -> "Am"); "" if unknown.
+
+    Some DJ tools (notably Mixxx) expect musical notation in the key tag rather
+    than the Camelot code; this maps cratemind's Camelot output to that form.
+    """
+    return _MUSICAL_FROM_CAMELOT.get(camelot, "")
+
 
 def _corr(a: list[float], b: tuple[float, ...]) -> float:
     n = len(a)

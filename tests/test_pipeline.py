@@ -12,6 +12,44 @@ def _make_file(tmp_path: Path, name: str = "song.flac") -> Path:
     return path
 
 
+def _analyzed_flac(tmp_path: Path) -> Track:
+    return Track(
+        spotify_id="1", title="Nightcall", artist="Kavinsky", genre="synthwave",
+        bpm=118, key="8A", file_path=_make_file(tmp_path), status="downloading",
+    )
+
+
+def test_process_track_embeds_tags_into_sorted_file(tmp_path):
+    calls: list[dict] = []
+    process_track(
+        _analyzed_flac(tmp_path),
+        Settings(output_dir=tmp_path / "out"),
+        estimator=lambda _p: 118,
+        key_estimator=lambda _p: "8A",
+        audio_genre_lookup=None,
+        coarse_genre_lookup=None,
+        tag_writer=lambda path, **kw: calls.append({"path": path, **kw}),
+    )
+    assert len(calls) == 1
+    assert calls[0]["key"] == "8A" and calls[0]["bpm"] == 118
+    assert calls[0]["notation"] == "camelot"
+    assert calls[0]["path"].exists()  # writes to the post-sort path
+
+
+def test_process_track_skips_tags_when_opted_out(tmp_path):
+    calls: list[Path] = []
+    process_track(
+        _analyzed_flac(tmp_path),
+        Settings(output_dir=tmp_path / "out", write_tags=False),
+        estimator=lambda _p: 118,
+        key_estimator=lambda _p: "8A",
+        audio_genre_lookup=None,
+        coarse_genre_lookup=None,
+        tag_writer=lambda path, **kw: calls.append(path),
+    )
+    assert calls == []  # opt-out -> no tag writing
+
+
 def test_sort_track_moves_into_genre_bucket(tmp_path):
     out = tmp_path / "out"
     src = _make_file(tmp_path)
