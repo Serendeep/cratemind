@@ -8,7 +8,7 @@ casing ("T78", not "t78"). The lookups are injectable so tests pass fakes.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from ..download.base import Track
@@ -25,7 +25,7 @@ def resolve_genre(
     audio_genre_lookup: AudioGenreLookup | None = None,
     artist_genre_lookup: ArtistGenreLookup | None = None,
     coarse_genre_lookup: CoarseGenreLookup | None = None,
-    aliases: dict[str, str] | None = None,
+    aliases: Mapping[str, str] | None = None,
 ) -> str | None:
     tagged = canonicalize(track.genre, aliases)
     if tagged:

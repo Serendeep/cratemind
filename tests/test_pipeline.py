@@ -50,6 +50,19 @@ def test_process_track_skips_tags_when_opted_out(tmp_path):
     assert calls == []  # opt-out -> no tag writing
 
 
+def test_sort_track_applies_custom_alias_from_settings(tmp_path):
+    # A user-defined alias in settings folds the tagged genre into the chosen name.
+    out = tmp_path / "out"
+    src = _make_file(tmp_path)
+    track = Track(
+        spotify_id="1", title="x", artist="A", genre="techno",
+        bpm=130, bpm_bucket="128-135", file_path=src,
+    )
+    result = sort_track(track, Settings(output_dir=out, aliases={"techno": "warehouse"}))
+    assert result.genre == "warehouse"
+    assert result.file_path == out / "warehouse" / "128-135" / "song.flac"
+
+
 def test_sort_track_moves_into_genre_bucket(tmp_path):
     out = tmp_path / "out"
     src = _make_file(tmp_path)

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cratemind / settings</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root{--bg:#0c0d0f;--panel:#141519;--line:#23252b;--t1:#e9eaec;--t2:#989aa1;--t3:#6a6d75;--acc:#7fb98a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--t1);font-family:'Inter',system-ui,sans-serif;line-height:1.5}
+  main{max-width:760px;margin:0 auto;padding:40px 22px}
+  .top{display:flex;justify-content:space-between;align-items:baseline}
+  h1{font-size:19px;margin:0;font-weight:600}
+  h1 span{color:var(--t3);font-weight:400}
+  a{color:var(--acc);text-decoration:none}
+  .ver{color:var(--t3);font-size:12px}
+  .lead{color:var(--t2);font-size:13px;margin:6px 0 18px}
+  .label{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:26px 0 12px}
+  .row{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:8px;font-family:ui-monospace,monospace;font-size:13px}
+  .row .arrow{color:var(--t3)}
+  .row .from{color:var(--t1)}
+  .row .to{color:var(--acc)}
+  .row.def{opacity:.6}
+  .row .sp{flex:1}
+  .btn{font-size:12px;border:1px solid var(--line);background:var(--panel);color:var(--t1);border-radius:7px;padding:7px 12px;cursor:pointer;text-decoration:none;white-space:nowrap}
+  .btn:hover{border-color:var(--t3)}
+  form{margin:0}
+  .add{display:flex;gap:8px;margin-top:8px}
+  .add input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--t1);border-radius:7px;padding:9px 11px;font-family:ui-monospace,monospace;font-size:13px}
+  .empty{color:var(--t2);font-size:14px}
+  .note{color:var(--t3);font-size:12px;margin-top:6px}
+  .mono{font-family:ui-monospace,monospace}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>cratemind <span>/ settings</span></h1>
+    <span class="ver">v{{ version }} · local</span>
+  </div>
+  <p class="lead">Genre aliases fold different names for the same genre into one folder
+    (for example, <span class="mono">dnb</span> &rarr; <span class="mono">drum and bass</span>).</p>
+  <a href="/">&larr; back</a>
+
+  <div class="label">// your aliases</div>
+  {% if not custom %}
+  <p class="empty">No custom aliases yet. Add one below.</p>
+  {% else %}
+  {% for name, canonical in custom.items() %}
+  <div class="row">
+    <span class="from">{{ name }}</span><span class="arrow">&rarr;</span><span class="to">{{ canonical }}</span>
+    <span class="sp"></span>
+    <form method="post" action="/settings/alias/delete">
+      <input type="hidden" name="name" value="{{ name }}">
+      <button class="btn" type="submit">Remove</button>
+    </form>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <form class="add" method="post" action="/settings/alias">
+    <input type="text" name="name" placeholder="genre as written (e.g. tech house)" aria-label="genre name" required>
+    <input type="text" name="canonical" placeholder="folder it should use (e.g. house)" aria-label="canonical genre" required>
+    <button class="btn" type="submit">Add</button>
+  </form>
+  <p class="note">Names are matched case-insensitively; <span class="mono">&amp;</span> is treated as "and".</p>
+
+  <div class="label">// built-in defaults (add an alias with the same name to override)</div>
+  {% for name, canonical in defaults.items() %}
+  <div class="row def">
+    <span class="from">{{ name }}</span><span class="arrow">&rarr;</span><span class="to">{{ canonical }}</span>
+  </div>
+  {% endfor %}
+</main>
+</body>
+</html>
