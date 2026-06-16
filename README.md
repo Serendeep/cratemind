@@ -64,7 +64,7 @@ cd cratemind
 ## Setup (one command)
 
 From the cratemind folder, run the setup script for your system. It walks through
-each tool (uv, ffmpeg, spotdl), installs the app, and asks whether to set up the
+each tool (uv, spotdl, ffmpeg), installs the app, and asks whether to set up the
 genre model now. Anything already installed is left alone:
 
 - macOS / Linux: `./setup.sh`
@@ -73,6 +73,16 @@ genre model now. Anything already installed is left alone:
 Add `--yes` (or `-Yes` on Windows) to accept the defaults without prompts. Then
 jump to [Run it](#run-it). Prefer to install by hand? See
 [Manual setup](#manual-setup) below.
+
+If no system ffmpeg is found, setup fetches a portable copy through spotdl; the
+app adds it to its own PATH at startup, so you never touch environment variables.
+
+### Updating (no git required)
+
+Download the latest ZIP, extract it, and run the setup script again. The big
+downloads — the ~330 MB genre model and ffmpeg — live in your user cache,
+**outside** the project folder, so they're reused rather than re-downloaded. A
+re-run only relinks the lightweight app environment.
 
 ---
 
@@ -92,17 +102,24 @@ cratemind relies on three free tools; install each once.
   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
   ```
 
-**2. ffmpeg**: handles the audio
+**2. spotdl**: fetches the tracks
+
+```
+uv tool install --force --python 3.12 spotdl
+```
+
+Pin Python 3.12 — on newer interpreters spotdl's dependencies fail with an
+"openssl outdated" error.
+
+**3. ffmpeg**: handles the audio
 
 - macOS (Homebrew): `brew install ffmpeg`
 - Windows (winget): `winget install Gyan.FFmpeg`
 - Linux (apt): `sudo apt install ffmpeg`
 
-**3. spotdl**: fetches the tracks
-
-```
-uv tool install spotdl
-```
+No system package manager? Once spotdl is installed, fetch a portable build into
+cratemind's cache with `uv run cratemind setup-ffmpeg`. The app finds it
+automatically — no PATH changes needed.
 
 Then install cratemind's own dependencies:
 
@@ -184,8 +201,10 @@ MP3, or M4A). True lossless from Tidal/Qobuz is paused for now; see the
 
 ## Troubleshooting
 
-- **"spotdl is not installed"**: run `uv tool install spotdl`.
-- **"ffmpeg not found"**: install ffmpeg (see above).
+- **"spotdl is not installed"** (or an "openssl outdated" error): run
+  `uv tool install --force --python 3.12 spotdl`.
+- **"ffmpeg not found"**: run `uv run cratemind setup-ffmpeg`, or re-run the setup
+  script — both fetch a portable ffmpeg the app picks up automatically.
 - **A BPM looks wrong (half or double)**: widen or narrow the BPM window under
   Advanced so it matches the music you're sorting.
 

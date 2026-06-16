@@ -1,5 +1,5 @@
 {% if job.status == "error" %}
-<div class="err">Couldn't run: {{ job.error }}. Make sure <span class="mono">spotdl</span> and <span class="mono">ffmpeg</span> are installed (see the README).</div>
+<div class="err">Couldn't run: {{ job.error }}. If it mentions <span class="mono">spotdl</span> or <span class="mono">ffmpeg</span>, re-run the setup script to (re)install them (see the README).</div>
 {% else %}
 <div id="run"{% if job.status == "running" %} hx-get="/runs/{{ job.id }}?page={{ page.number }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
   {% if not page.tracks %}

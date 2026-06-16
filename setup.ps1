@@ -8,6 +8,20 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 function Have($c) { $null -ne (Get-Command $c -ErrorAction SilentlyContinue) }
 
+# Best-effort mirror of platformdirs.user_cache_dir("cratemind") on Windows
+# (%LOCALAPPDATA%\cratemind\cratemind\Cache). Used only to skip artifacts already
+# on disk so re-runs don't re-download. The Python side stays the source of truth.
+function Cratemind-Cache { Join-Path $env:LOCALAPPDATA "cratemind\cratemind\Cache" }
+function Model-Present { Test-Path (Join-Path (Cratemind-Cache) "models\*.onnx") }
+function Ffmpeg-Present {
+  if (Have ffmpeg) { return $true }
+  foreach ($b in @((Join-Path (Cratemind-Cache) "bin\ffmpeg.exe"),
+                   (Join-Path $env:USERPROFILE ".spotdl\ffmpeg.exe"))) {
+    if (Test-Path $b) { return $true }
+  }
+  return $false
+}
+
 # ---- box drawing ----------------------------------------------------------
 $BoxW = 50
 $Rule = ('─' * $BoxW)
@@ -60,8 +74,8 @@ Write-Host ""
 Write-Host "  This sets up four free tools and the app. Here is the plan:"
 Write-Host ""
 Write-Host "    1. uv        runs the app"
-Write-Host "    2. ffmpeg    decodes the audio"
-Write-Host "    3. spotdl    fetches the tracks"
+Write-Host "    2. spotdl    fetches the tracks"
+Write-Host "    3. ffmpeg    decodes the audio"
 Write-Host "    4. cratemind the app and its dependencies"
 Write-Host "    5. genre model  optional, reads genres from the audio (~330 MB)"
 Write-Host ""
@@ -91,10 +105,30 @@ if (Have uv) {
   $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
 }
 
-# ---- 2. ffmpeg ------------------------------------------------------------
-Step "ffmpeg" "decodes the audio"
-if (Have ffmpeg) {
+# ---- 2. spotdl ------------------------------------------------------------
+# Installed before ffmpeg because the ffmpeg fallback below uses spotdl's
+# portable-ffmpeg downloader. Pin Python 3.12: newer interpreters surface an
+# "openssl outdated" error from spotdl's deps. The guard checks spotdl actually
+# RUNS, not just that it exists, so a previously broken install gets replaced.
+Step "spotdl" "fetches the tracks"
+$spotdlOk = $false
+if (Have spotdl) { spotdl --version *> $null; $spotdlOk = ($LASTEXITCODE -eq 0) }
+if ($spotdlOk) {
   Skip "already installed"
+} elseif (Have uv) {
+  Cmd "uv tool install --force --python 3.12 spotdl"
+  uv tool install --force --python 3.12 spotdl
+  if ($LASTEXITCODE -eq 0) { Good "spotdl installed" } else { Fail "spotdl install failed" }
+} else {
+  Fail "needs uv first. Re-run this script once uv is in place"
+}
+
+# ---- 3. ffmpeg ------------------------------------------------------------
+# winget first (a current ffmpeg on PATH); else spotdl's portable build. No PATH
+# edits — the app finds the binary at runtime via ensure_ffmpeg_on_path.
+Step "ffmpeg" "decodes the audio"
+if (Ffmpeg-Present) {
+  Skip "already available"
 } elseif (Have winget) {
   Cmd "winget install Gyan.FFmpeg"
   try {
@@ -104,30 +138,29 @@ if (Have ffmpeg) {
     Fail "winget failed. Install ffmpeg by hand:"
     Warn "https://ffmpeg.org/download.html"
   }
+} elseif (Have spotdl) {
+  Cmd "spotdl --download-ffmpeg"
+  spotdl --download-ffmpeg
+  if (Ffmpeg-Present) { Good "ffmpeg installed (portable build; cratemind finds it automatically)" }
+  else { Fail "couldn't fetch ffmpeg. Install it by hand:"; Warn "https://ffmpeg.org/download.html" }
 } else {
-  Fail "winget not found. Install ffmpeg by hand:"
+  Fail "couldn't install ffmpeg automatically. Install it by hand:"
   Warn "https://ffmpeg.org/download.html"
-}
-
-# ---- 3. spotdl ------------------------------------------------------------
-Step "spotdl" "fetches the tracks"
-if (Have spotdl) {
-  Skip "already installed"
-} elseif (Have uv) {
-  Cmd "uv tool install spotdl"
-  uv tool install spotdl
-  if ($LASTEXITCODE -eq 0) { Good "spotdl installed" } else { Fail "spotdl install failed" }
-} else {
-  Fail "needs uv first. Re-run this script once uv is in place"
 }
 
 # ---- 4. cratemind ---------------------------------------------------------
 Step "cratemind" "the app and its dependencies"
 $WithAudio = $false
 if (Have uv) {
-  Write-Host "    Genre detection uses a local model. You can set it up now or skip it"
-  Write-Host "    and group tracks by artist until you add it later."
-  if (Ask "Set up genre detection? (downloads a ~330 MB model)" 'Y') {
+  if (Model-Present) {
+    # Genre detection already set up; keep it. Syncing without the extra would
+    # prune the audio deps and silently break it.
+    $WithAudio = $true
+    Write-Host "    Genre detection is already set up; keeping it."
+    Cmd "uv sync --extra audio-genre"
+    uv sync --extra audio-genre
+    if ($LASTEXITCODE -eq 0) { Good "dependencies installed (with audio)" } else { Fail "uv sync failed" }
+  } elseif (Ask "Set up genre detection? (downloads a ~330 MB model)" 'Y') {
     $WithAudio = $true
     Cmd "uv sync --extra audio-genre"
     uv sync --extra audio-genre
@@ -143,9 +176,11 @@ if (Have uv) {
 }
 
 # ---- 5. genre model -------------------------------------------------------
+# download-model is idempotent, so a re-run reuses the cached model.
 Step "genre model" "reads genres from the audio"
 if ($WithAudio -and (Have uv)) {
-  Write-Host "    Downloading the model (one time, ~330 MB)."
+  if (Model-Present) { Write-Host "    Already downloaded; reusing the cached model." }
+  else { Write-Host "    Downloading the model (one time, ~330 MB)." }
   Cmd "uv run cratemind download-model"
   uv run cratemind download-model
   if ($LASTEXITCODE -eq 0) { Good "genre model ready" } else { Fail "model download failed" }

@@ -74,8 +74,8 @@ boxbot
 printf '\n'
 printf '  This sets up four free tools and the app. Here is the plan:\n\n'
 printf '    %s1.%s %suv%s        runs the app\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
-printf '    %s2.%s %sffmpeg%s    decodes the audio\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
-printf '    %s3.%s %sspotdl%s    fetches the tracks\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
+printf '    %s2.%s %sspotdl%s    fetches the tracks\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
+printf '    %s3.%s %sffmpeg%s    decodes the audio\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
 printf '    %s4.%s %scratemind%s the app and its dependencies\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
 printf '    %s5.%s %sgenre model%s  optional, reads genres from the audio (~330 MB)\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
 printf '\n'
@@ -101,50 +101,107 @@ else
   export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# ---- 2. ffmpeg ------------------------------------------------------------
-step "ffmpeg" "decodes the audio"
-if have ffmpeg; then
-  skip "already installed"
-elif have brew;    then run brew install ffmpeg && good "ffmpeg installed"
-elif have apt-get; then run sudo apt-get update && run sudo apt-get install -y ffmpeg && good "ffmpeg installed"
-elif have dnf;     then run sudo dnf install -y ffmpeg && good "ffmpeg installed"
-elif have pacman;  then run sudo pacman -S --noconfirm ffmpeg && good "ffmpeg installed"
-else
-  fail "no package manager I recognize. Install ffmpeg by hand:"
-  warn "https://ffmpeg.org/download.html"
-fi
-
-# ---- 3. spotdl ------------------------------------------------------------
+# ---- 2. spotdl ------------------------------------------------------------
+# Installed before ffmpeg because the ffmpeg fallback below leans on spotdl's
+# portable-ffmpeg downloader when no system package manager is available.
+#
+# Pin Python 3.12: on newer interpreters spotdl's dependencies fail with an
+# "openssl outdated" error. The skip-guard checks that spotdl actually RUNS, not
+# just that it exists, so a previously broken install gets force-reinstalled.
 step "spotdl" "fetches the tracks"
-if have spotdl; then
+if have spotdl && spotdl --version >/dev/null 2>&1; then
   skip "already installed"
 elif have uv; then
-  run uv tool install spotdl && good "spotdl installed"
+  if run uv tool install --force --python 3.12 spotdl; then
+    good "spotdl installed"
+  else
+    fail "spotdl install failed"
+  fi
 else
   fail "needs uv first. Re-run this script once uv is in place"
+fi
+
+# ---- cache detection ------------------------------------------------------
+# Best-effort mirror of platformdirs.user_cache_dir("cratemind") for macOS/Linux.
+# Used only to skip artifacts already on disk so re-runs (the no-git "download a
+# fresh ZIP" update path) don't re-download. The Python side (genre/audio.py,
+# ffmpeg.py) stays the source of truth for the real paths.
+cratemind_cache() {
+  case "$(uname -s)" in
+    Darwin) printf '%s' "$HOME/Library/Caches/cratemind" ;;
+    *)      printf '%s' "${XDG_CACHE_HOME:-$HOME/.cache}/cratemind" ;;
+  esac
+}
+model_present() { ls "$(cratemind_cache)"/models/*.onnx >/dev/null 2>&1; }
+ffmpeg_present() {
+  have ffmpeg && return 0  # a system ffmpeg on PATH
+  local bin
+  for bin in "$(cratemind_cache)/bin/ffmpeg" "$HOME/.spotdl/ffmpeg" "$HOME/.config/spotdl/ffmpeg"; do
+    [ -x "$bin" ] && return 0
+  done
+  return 1
+}
+
+# ---- 3. ffmpeg ------------------------------------------------------------
+# System package manager first (a current ffmpeg on PATH); else spotdl's portable
+# build. No PATH/symlink edits — the app finds the binary at runtime via
+# cratemind.ffmpeg.ensure_ffmpeg_on_path and injects it into its own process.
+step "ffmpeg" "decodes the audio"
+if ffmpeg_present; then
+  skip "already available"
+else
+  ffmpeg_done=0
+  if   have brew;    then run brew install ffmpeg && ffmpeg_done=1
+  elif have apt-get; then run sudo apt-get update; run sudo apt-get install -y ffmpeg && ffmpeg_done=1
+  elif have dnf;     then run sudo dnf install -y ffmpeg && ffmpeg_done=1
+  elif have pacman;  then run sudo pacman -S --noconfirm ffmpeg && ffmpeg_done=1
+  fi
+
+  if [ "$ffmpeg_done" = 1 ] && have ffmpeg; then
+    good "ffmpeg installed"
+  elif have spotdl && run spotdl --download-ffmpeg && ffmpeg_present; then
+    good "ffmpeg installed (portable build; cratemind finds it automatically)"
+  else
+    fail "couldn't install ffmpeg automatically. Install it by hand, then re-run:"
+    warn "https://ffmpeg.org/download.html"
+  fi
 fi
 
 # ---- 4. cratemind ---------------------------------------------------------
 step "cratemind" "the app and its dependencies"
 WITH_AUDIO=0
 if have uv; then
-  printf '    Genre detection uses a local model. You can set it up now or skip it\n'
-  printf '    and group tracks by artist until you add it later.\n'
-  if ask "Set up genre detection? (downloads a ~330 MB model)" Y; then
+  if model_present; then
+    # Genre detection already set up on a previous run; keep it. Syncing WITHOUT
+    # the extra here would prune the audio deps and silently break it.
     WITH_AUDIO=1
+    printf '    Genre detection is already set up; keeping it.\n'
     run uv sync --extra audio-genre && good "dependencies installed (with audio)"
   else
-    run uv sync && good "dependencies installed"
-    warn "skipped the genre model. Add it later with: uv run cratemind download-model"
+    printf '    Genre detection uses a local model. You can set it up now or skip it\n'
+    printf '    and group tracks by artist until you add it later.\n'
+    if ask "Set up genre detection? (downloads a ~330 MB model)" Y; then
+      WITH_AUDIO=1
+      run uv sync --extra audio-genre && good "dependencies installed (with audio)"
+    else
+      run uv sync && good "dependencies installed"
+      warn "skipped the genre model. Add it later with: uv run cratemind download-model"
+    fi
   fi
 else
   fail "uv is missing, so the app can't be installed yet"
 fi
 
 # ---- 5. genre model -------------------------------------------------------
+# download-model is idempotent (skips files already on disk), so a re-run after
+# a fresh ZIP download reuses the cached ~330 MB model instead of re-fetching.
 step "genre model" "reads genres from the audio"
 if [ "$WITH_AUDIO" = 1 ] && have uv; then
-  printf '    Downloading the model (one time, ~330 MB).\n'
+  if model_present; then
+    printf '    Already downloaded; reusing the cached model.\n'
+  else
+    printf '    Downloading the model (one time, ~330 MB).\n'
+  fi
   run uv run cratemind download-model && good "genre model ready"
 else
   skip "skipped (cratemind still sorts by tempo and groups by artist)"
