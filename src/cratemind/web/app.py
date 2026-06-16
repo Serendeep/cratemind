@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, File, Form, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -80,6 +81,10 @@ def start_run(
     octave_high: int = Form(180),
     bucket_width: int = Form(8),
     online_genre: bool = Form(False),
+    # Default False is the "checkbox unchecked" value; the form renders it checked
+    # by default (defaults.write_tags), so an untouched form still writes tags.
+    write_tags: bool = Form(False),
+    key_notation: Literal["camelot", "musical"] = Form("camelot"),
 ) -> HTMLResponse:
     settings = Settings(
         output_dir=Path(output_dir).expanduser(),
@@ -89,6 +94,8 @@ def start_run(
         octave_high=octave_high,
         bucket_width=bucket_width,
         online_genre=online_genre,
+        write_tags=write_tags,
+        key_notation=key_notation,
     )
     save_settings(settings)
     job = jobs.start(playlist_url, settings)

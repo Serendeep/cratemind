@@ -164,7 +164,22 @@ a folder, and hit **Run**.
   `{bpm_bucket}`, `{bpm}`, `{key}`, `{artist}`, `{year}`. `{key}` is the Camelot
   code (like `8A`) for harmonic mixing, also shown next to each track's BPM.
 - **Advanced**: the BPM window (used to correct half- or double-tempo
-  mistakes) and how wide each tempo band is.
+  mistakes), how wide each tempo band is, and **metadata tags** (below).
+
+### Metadata tags (for Rekordbox, Mixxx, Serato…)
+
+cratemind writes the **key, BPM, and genre** into each downloaded file's tags so
+DJ software shows them on import. It's on by default — uncheck it under Advanced
+to leave files untouched.
+
+The key is written as the **Camelot code** (`8A`) by default, which most DJ
+software reads. Two notes:
+
+- **Mixxx** expects *musical* notation (`Am`) in the key field. Switch the "key
+  as" option under Advanced to **musical** if you use Mixxx.
+- **Rekordbox** runs its own key analysis on import, which can override the
+  embedded value. To keep cratemind's key, disable Key under
+  Preferences → Analysis, or use *Reload Tags*.
 
 Tracks appear in a live list as they download, get analyzed, and get sorted. When
 no genre can be found for a track, it's grouped by artist instead; never lost.

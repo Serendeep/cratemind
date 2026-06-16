@@ -46,6 +46,8 @@ def load_settings() -> Settings:
             octave_high=int(data.get("octave_high", 180)),
             bucket_width=int(data.get("bucket_width", 8)),
             online_genre=bool(data.get("online_genre", False)),
+            write_tags=bool(data.get("write_tags", True)),
+            key_notation=data.get("key_notation", "camelot"),
         )
     except (json.JSONDecodeError, KeyError, ValueError, OSError):
         return Settings()  # corrupt or stale prefs -> sane defaults
@@ -62,6 +64,8 @@ def save_settings(settings: Settings) -> None:
                 "octave_high": settings.octave_high,
                 "bucket_width": settings.bucket_width,
                 "online_genre": settings.online_genre,
+                "write_tags": settings.write_tags,
+                "key_notation": settings.key_notation,
             },
             indent=2,
         )
