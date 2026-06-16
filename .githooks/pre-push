@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Block a push when lint or tests fail — the same checks CI runs, caught locally
+# before the round-trip. Enable with: git config core.hooksPath .githooks
+# Skip in a pinch with: git push --no-verify
+set -euo pipefail
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "✗ uv not found; can't run the pre-push checks. Install uv or use --no-verify." >&2
+  exit 1
+fi
+
+echo "▸ ruff check…"
+uv run ruff check src tests
+
+echo "▸ pytest…"
+uv run pytest -q
+
+echo "✓ lint + tests passed; pushing."
