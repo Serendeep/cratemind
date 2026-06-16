@@ -77,7 +77,7 @@ printf '    %s1.%s %suv%s        runs the app\n' "$GREEN" "$RESET" "$BOLD" "$RES
 printf '    %s2.%s %sffmpeg%s    decodes the audio\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
 printf '    %s3.%s %sspotdl%s    fetches the tracks\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
 printf '    %s4.%s %scratemind%s the app and its dependencies\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
-printf '    %s5.%s %sgenre model%s  optional, reads genres from the audio (~344 MB)\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
+printf '    %s5.%s %sgenre model%s  optional, reads genres from the audio (~330 MB)\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
 printf '\n'
 printf '  Anything already installed is left as is. Nothing leaves your computer.\n'
 
@@ -130,7 +130,7 @@ WITH_AUDIO=0
 if have uv; then
   printf '    Genre detection uses a local model. You can set it up now or skip it\n'
   printf '    and group tracks by artist until you add it later.\n'
-  if ask "Set up genre detection? (downloads a ~344 MB model)" Y; then
+  if ask "Set up genre detection? (downloads a ~330 MB model)" Y; then
     WITH_AUDIO=1
     run uv sync --extra audio-genre && good "dependencies installed (with audio)"
   else
@@ -144,7 +144,7 @@ fi
 # ---- 5. genre model -------------------------------------------------------
 step "genre model" "reads genres from the audio"
 if [ "$WITH_AUDIO" = 1 ] && have uv; then
-  printf '    Downloading the model (one time, ~344 MB).\n'
+  printf '    Downloading the model (one time, ~330 MB).\n'
   run uv run cratemind download-model && good "genre model ready"
 else
   skip "skipped (cratemind still sorts by tempo and groups by artist)"

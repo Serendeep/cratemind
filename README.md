@@ -17,14 +17,14 @@ your own machine, with no account to sign up for.
 ## What it does
 
 - **Downloads a whole Spotify playlist** with spotdl, in the format you pick.
-- **Detects BPM and Camelot key** for every track — for tempo sorting and
+- **Detects BPM and Camelot key** for every track, for tempo sorting and
   harmonic mixing.
 - **Identifies the genre from the audio.** An on-device model reads the real
   electronic sub-genre (hard techno, tech house, trance) straight off the
   waveform, since underground tracks rarely carry a usable genre tag.
 - **Sorts into folders you template**, like `hard techno/140-147/`.
-- **Live progress in the browser** — and reloading the page reconnects to the run.
-- **Resumes instantly** — re-running a playlist skips tracks already sorted.
+- **Live progress in the browser**, and reloading the page reconnects to the run.
+- **Resumes instantly**, re-running a playlist skips tracks already sorted.
 - **Share a crate** as a small `crate.json` (the analysis, not the audio) and
   re-import it to rebuild the same folders without re-analyzing.
 - **Runs on your own machine.** No account, and by default nothing about your
@@ -45,7 +45,7 @@ your own machine, with no account to sign up for.
 ```
 
 Each track lands in a `{genre}/{tempo}/` folder. When the model isn't confident
-and no genre can be found, the track is grouped by artist instead — never lost.
+and no genre can be found, the track is grouped by artist instead; never lost.
 
 ---
 
@@ -79,9 +79,9 @@ jump to [Run it](#run-it). Prefer to install by hand? See
 ## Manual setup
 
 Only needed if the setup script missed something, or you'd rather do it yourself.
-cratemind relies on three free tools — install each once.
+cratemind relies on three free tools; install each once.
 
-**1. uv** — runs cratemind
+**1. uv**: runs cratemind
 
 - macOS / Linux:
   ```
@@ -92,13 +92,13 @@ cratemind relies on three free tools — install each once.
   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
   ```
 
-**2. ffmpeg** — handles the audio
+**2. ffmpeg**: handles the audio
 
 - macOS (Homebrew): `brew install ffmpeg`
 - Windows (winget): `winget install Gyan.FFmpeg`
 - Linux (apt): `sudo apt install ffmpeg`
 
-**3. spotdl** — fetches the tracks
+**3. spotdl**: fetches the tracks
 
 ```
 uv tool install spotdl
@@ -121,25 +121,25 @@ uv run cratemind
 ```
 
 The first run takes a minute while uv sets things up. When it's ready it prints a
-link — open `http://127.0.0.1:8000` in your browser. Paste a playlist link, pick
+link. Open `http://127.0.0.1:8000` in your browser. Paste a playlist link, pick
 a folder, and hit **Run**.
 
 ---
 
 ## Using it
 
-- **Output folder** — where your sorted music lands. Defaults to
+- **Output folder**: where your sorted music lands. Defaults to
   `~/Music/cratemind`.
-- **Format** — FLAC (best quality) by default; MP3 and M4A are smaller.
-- **Folder template** — how folders get named. `{genre}/{bpm_bucket}/` gives you
+- **Format**: FLAC (best quality) by default; MP3 and M4A are smaller.
+- **Folder template**: how folders get named. `{genre}/{bpm_bucket}/` gives you
   `hard techno/140-147/`. You can mix and match these tokens: `{genre}`,
   `{bpm_bucket}`, `{bpm}`, `{key}`, `{artist}`, `{year}`. `{key}` is the Camelot
   code (like `8A`) for harmonic mixing, also shown next to each track's BPM.
-- **Advanced** — the BPM window (used to correct half- or double-tempo
+- **Advanced**: the BPM window (used to correct half- or double-tempo
   mistakes) and how wide each tempo band is.
 
 Tracks appear in a live list as they download, get analyzed, and get sorted. When
-no genre can be found for a track, it's grouped by artist instead — never lost.
+no genre can be found for a track, it's grouped by artist instead; never lost.
 
 Re-running a playlist is cheap: each track is downloaded straight into your output
 folder and moved into its genre folder, so a re-run skips everything that's
@@ -150,8 +150,8 @@ already sorted and only fetches what's new.
 ## Genre detection (audio model)
 
 cratemind reads the genre from the audio with an on-device model, so it works on
-underground tracks that have no genre tag. The model is an optional ~344 MB
-download — fetch it once:
+underground tracks that have no genre tag. The model is an optional ~330 MB
+download. Fetch it once:
 
 ```
 uv sync --extra audio-genre
@@ -167,8 +167,8 @@ never the audio.
 
 ## Sharing a crate
 
-You can export a crate as a small `crate.json` file. It holds the analysis —
-genre and BPM per track — not the audio. Someone else can import it to rebuild
+You can export a crate as a small `crate.json` file. It holds the analysis,
+genre and BPM per track, not the audio. Someone else can import it to rebuild
 the same sorted folders without re-analyzing anything. You can also upload it to
 a free host (catbox.moe or 0x0.st) to get a link you can pass around.
 
@@ -184,9 +184,9 @@ MP3, or M4A). True lossless from Tidal/Qobuz is paused for now; see the
 
 ## Troubleshooting
 
-- **"spotdl is not installed"** — run `uv tool install spotdl`.
-- **"ffmpeg not found"** — install ffmpeg (see above).
-- **A BPM looks wrong (half or double)** — widen or narrow the BPM window under
+- **"spotdl is not installed"**: run `uv tool install spotdl`.
+- **"ffmpeg not found"**: install ffmpeg (see above).
+- **A BPM looks wrong (half or double)**: widen or narrow the BPM window under
   Advanced so it matches the music you're sorting.
 
 ---
@@ -195,7 +195,7 @@ MP3, or M4A). True lossless from Tidal/Qobuz is paused for now; see the
 
 - **True lossless downloads (Tidal/Qobuz FLAC).** This used
   [SpotiFLAC](https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version)'s free,
-  no-account providers — reverse-engineered mirrors that go down for hours at a
+  no-account providers, reverse-engineered mirrors that go down for hours at a
   time. The integration and an automatic fallback to spotdl are already built;
   it's disabled by default and explored on the `experiment/spotiflac-lossless`
   branch. It'll come back on once it's dependable.
@@ -212,7 +212,7 @@ Pull requests are welcome. To get set up:
    uv sync --extra dev
    ```
 3. Make your change. Keep modules small and add a test for any new behavior.
-4. Run the tests — they should all pass before you open a PR:
+4. Run the tests; they should all pass before you open a PR:
    ```
    uv run pytest
    ```
@@ -228,7 +228,7 @@ through before you spend time on it.
 
 Open an issue on the [GitHub Issues page](https://github.com/Serendeep/cratemind/issues) and include:
 
-- What you did — your format and template settings, and the playlist link if
+- What you did: your format and template settings, and the playlist link if
   it's public.
 - What you expected versus what actually happened.
 - The error message, copied from the terminal.
@@ -264,7 +264,7 @@ either way.
 
 ## License and disclaimer
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
 
 Please read the [DISCLAIMER](DISCLAIMER.md). In short: cratemind is for
 organizing music you're entitled to use, and you're responsible for following

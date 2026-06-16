@@ -1,7 +1,7 @@
 """Predict an electronic sub-genre from the waveform using the Discogs-MAEST model.
 
 Runs the MAEST ONNX model on the CPU (onnxruntime) to label audio with one of 400
-Discogs styles. onnxruntime and the ~344 MB model are optional and downloaded on
+Discogs styles. onnxruntime and the ~330 MB model are optional and downloaded on
 first use; any failure returns None so the resolver falls back gracefully.
 """
 
@@ -45,7 +45,7 @@ def metadata_path() -> Path:
 
 
 def download_model() -> Path:  # pragma: no cover - network/IO, run on demand
-    """Download the MAEST ONNX model + metadata into the cache (once). ~344 MB."""
+    """Download the MAEST ONNX model + metadata into the cache (once). ~330 MB."""
     import httpx
 
     model_dir().mkdir(parents=True, exist_ok=True)

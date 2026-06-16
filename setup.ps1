@@ -63,7 +63,7 @@ Write-Host "    1. uv        runs the app"
 Write-Host "    2. ffmpeg    decodes the audio"
 Write-Host "    3. spotdl    fetches the tracks"
 Write-Host "    4. cratemind the app and its dependencies"
-Write-Host "    5. genre model  optional, reads genres from the audio (~344 MB)"
+Write-Host "    5. genre model  optional, reads genres from the audio (~330 MB)"
 Write-Host ""
 Write-Host "  Anything already installed is left as is. Nothing leaves your computer."
 
@@ -127,7 +127,7 @@ $WithAudio = $false
 if (Have uv) {
   Write-Host "    Genre detection uses a local model. You can set it up now or skip it"
   Write-Host "    and group tracks by artist until you add it later."
-  if (Ask "Set up genre detection? (downloads a ~344 MB model)" 'Y') {
+  if (Ask "Set up genre detection? (downloads a ~330 MB model)" 'Y') {
     $WithAudio = $true
     Cmd "uv sync --extra audio-genre"
     uv sync --extra audio-genre
@@ -145,7 +145,7 @@ if (Have uv) {
 # ---- 5. genre model -------------------------------------------------------
 Step "genre model" "reads genres from the audio"
 if ($WithAudio -and (Have uv)) {
-  Write-Host "    Downloading the model (one time, ~344 MB)."
+  Write-Host "    Downloading the model (one time, ~330 MB)."
   Cmd "uv run cratemind download-model"
   uv run cratemind download-model
   if ($LASTEXITCODE -eq 0) { Good "genre model ready" } else { Fail "model download failed" }

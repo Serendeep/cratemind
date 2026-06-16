@@ -1,6 +1,6 @@
 """Entry point for `uv run cratemind` — launches the local web app.
 
-`cratemind download-model` fetches the MAEST audio-genre model (~344 MB) into the
+`cratemind download-model` fetches the MAEST audio-genre model (~330 MB) into the
 user cache so genre classification works offline; with no args it runs the server.
 """
 
@@ -14,7 +14,7 @@ def main() -> None:
         if sys.argv[1] == "download-model":
             from .genre.audio import download_model
 
-            print("Downloading the audio-genre model (~344 MB)…")
+            print("Downloading the audio-genre model (~330 MB)…")
             print(f"Done: {download_model()}")
             return
         sys.exit(f"unknown command: {sys.argv[1]!r} (try no arguments, or download-model)")
