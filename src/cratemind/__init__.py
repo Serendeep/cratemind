@@ -1,3 +1,3 @@
 """cratemind — download a Spotify playlist, analyze BPM + genre, sort into folders."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
