@@ -257,15 +257,39 @@ Pull requests are welcome. To get set up:
    uv sync --extra dev
    ```
 3. Make your change. Keep modules small and add a test for any new behavior.
-4. Run the tests; they should all pass before you open a PR:
+4. Run the tests and linter; both should pass before you open a PR (CI runs them too):
    ```
    uv run pytest
+   uv run ruff check src tests
    ```
 5. Open a pull request that says what changed and why.
 
-Keep commits focused and write clear, present-tense messages (for example,
-`fix bpm rounding`). For anything large, open an issue first so we can talk it
-through before you spend time on it.
+Use [Conventional Commits](https://www.conventionalcommits.org/) for commit
+messages (`feat: …`, `fix: …`, `docs: …`) — releases are generated from them
+(see [Releasing](#releasing)). Keep commits focused. For anything large, open an
+issue first so we can talk it through before you spend time on it.
+
+### Releasing
+
+Releases are automated with
+[release-please](https://github.com/googleapis/release-please). You don't tag or
+edit the version by hand:
+
+1. Merge your `feat:` / `fix:` work into `main`.
+2. release-please opens (or updates) a **"chore(main): release X.Y.Z"** pull
+   request that bumps the version in `pyproject.toml` and `__init__.py` and
+   writes `CHANGELOG.md` from the commits since the last release.
+3. When you're ready to ship, **merge that release PR**. release-please then
+   tags `vX.Y.Z` and publishes a GitHub Release with the changelog and source
+   zip — which is what `cratemind update` pulls.
+
+Version bumps follow the commit types: `fix:` → patch, `feat:` → minor,
+`feat!:` / `BREAKING CHANGE:` → major. Several unreleased commits collapse into a
+single release PR, so the version reflects the whole batch.
+
+> One-time repo setting (already enabled): Settings → Actions → General →
+> "Allow GitHub Actions to create and approve pull requests", which release-please
+> needs to open its release PR.
 
 ---
 
