@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Reject commit subjects that aren't Conventional Commits. release-please parses
+# the type to bump the version and build the changelog, so the format matters.
+# Enable with: git config core.hooksPath .githooks
+set -euo pipefail
+
+msg_file="$1"
+subject="$(head -n1 "$msg_file")"
+
+# Let merge / revert / fixup commits and comment-only messages through untouched.
+case "$subject" in
+  "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"#"*) exit 0 ;;
+esac
+
+types="feat|fix|refactor|docs|test|chore|perf|ci|build|style|revert"
+# type, optional (scope), optional ! for breaking, then ": " and a subject.
+pattern="^(${types})(\([a-z0-9._-]+\))?(!)?: .+"
+
+if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
+  echo "✗ commit message must be a Conventional Commit." >&2
+  echo "  got:      $subject" >&2
+  echo "  expected: <type>(<optional-scope>): <subject>" >&2
+  echo "  types:    feat fix refactor docs test chore perf ci build style revert" >&2
+  echo "  example:  feat(web): add genre alias editor" >&2
+  exit 1
+fi
+
+if [ "${#subject}" -gt 72 ]; then
+  echo "✗ commit subject is ${#subject} chars; keep it ≤ 72." >&2
+  exit 1
+fi
