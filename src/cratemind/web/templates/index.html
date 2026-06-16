@@ -198,7 +198,7 @@ footer{margin-top:36px;border-top:1px solid var(--line-2);padding:22px 0 44px}
           <label class="chk"><input type="checkbox" name="write_tags" value="true"{% if defaults.write_tags %} checked{% endif %}> write key, BPM &amp; genre into each file (Rekordbox, Mixxx, Serato…)</label>
           <div class="pair" style="margin-top:8px">
             <span>key as</span>
-            <select name="key_notation">
+            <select name="key_notation" aria-label="key notation">
               <option value="camelot"{{ ' selected' if defaults.key_notation == 'camelot' else '' }}>Camelot (8A)</option>
               <option value="musical"{{ ' selected' if defaults.key_notation == 'musical' else '' }}>musical (Am, for Mixxx)</option>
             </select>
