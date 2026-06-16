@@ -79,10 +79,21 @@ app adds it to its own PATH at startup, so you never touch environment variables
 
 ### Updating (no git required)
 
-Download the latest ZIP, extract it, and run the setup script again. The big
-downloads — the ~330 MB genre model and ffmpeg — live in your user cache,
-**outside** the project folder, so they're reused rather than re-downloaded. A
-re-run only relinks the lightweight app environment.
+The simplest way is to let cratemind update itself:
+
+```
+uv run cratemind update
+```
+
+It checks the latest [GitHub release](https://github.com/Serendeep/cratemind/releases),
+and if a newer one exists, downloads it over your install and re-syncs. cratemind
+also notes on startup when a new version is out. The big downloads — the ~330 MB
+genre model and ffmpeg — live in your user cache, **outside** the project folder,
+so an update reuses them rather than re-downloading; only the lightweight app
+environment relinks.
+
+Prefer to do it by hand? Download the latest ZIP, extract it over your folder,
+and run the setup script again — same result.
 
 ---
 
