@@ -20,12 +20,21 @@ DEFAULT_ALIASES: dict[str, str] = {
 }
 
 
+def normalize_genre(name: str) -> str:
+    """Lowercase, expand `&`, and collapse whitespace — the form aliases key on.
+
+    Used both before alias lookup and when storing an alias, so a saved alias key
+    matches what `canonicalize` looks up.
+    """
+    text = name.strip().lower().replace("&", " and ")
+    return _WHITESPACE.sub(" ", text).strip()
+
+
 def canonicalize(name: str | None, aliases: dict[str, str] | None = None) -> str | None:
     """Return a normalized genre, or None if there's nothing usable."""
     if name is None:
         return None
-    text = name.strip().lower().replace("&", " and ")
-    text = _WHITESPACE.sub(" ", text).strip()
+    text = normalize_genre(name)
     if not text:
         return None
     table = DEFAULT_ALIASES if aliases is None else {**DEFAULT_ALIASES, **aliases}

@@ -65,6 +65,17 @@ def test_alias_map_roundtrip():
     store.close()
 
 
+def test_delete_alias_removes_entry():
+    store = CrateStore()
+    store.set_alias("dnb", "drum and bass")
+    store.set_alias("edm", "electronic")
+    store.delete_alias("dnb")
+    assert store.aliases() == {"edm": "electronic"}
+    store.delete_alias("missing")  # deleting a non-existent alias is a no-op
+    assert store.aliases() == {"edm": "electronic"}
+    store.close()
+
+
 def test_run_id_for_is_stable():
     assert run_id_for("u") == run_id_for("u")
     assert len(run_id_for("u")) == 12

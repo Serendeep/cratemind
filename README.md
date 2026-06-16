@@ -79,21 +79,20 @@ app adds it to its own PATH at startup, so you never touch environment variables
 
 ### Updating (no git required)
 
-The simplest way is to let cratemind update itself:
+Let cratemind update itself:
 
 ```
 uv run cratemind update
 ```
 
-It checks the latest [GitHub release](https://github.com/Serendeep/cratemind/releases),
-and if a newer one exists, downloads it over your install and re-syncs. cratemind
-also notes on startup when a new version is out. The big downloads — the ~330 MB
-genre model and ffmpeg — live in your user cache, **outside** the project folder,
-so an update reuses them rather than re-downloading; only the lightweight app
-environment relinks.
+It checks the latest [GitHub release](https://github.com/Serendeep/cratemind/releases)
+and, if there's a newer one, downloads it over your install and re-syncs.
+cratemind also says on startup when a new version is out. The ~330 MB genre model
+and ffmpeg live in your user cache, **outside** the project folder, so an update
+reuses them instead of downloading them again; only the app environment relinks.
 
-Prefer to do it by hand? Download the latest ZIP, extract it over your folder,
-and run the setup script again — same result.
+To do it by hand: download the latest ZIP, extract it over your folder, and run
+the setup script again.
 
 ---
 
@@ -183,6 +182,11 @@ software reads. Two notes:
 
 Tracks appear in a live list as they download, get analyzed, and get sorted. When
 no genre can be found for a track, it's grouped by artist instead; never lost.
+
+**Genre aliases**: the [`/settings`](http://127.0.0.1:8000/settings) page lets you
+fold different names for the same genre into one folder — e.g. map `tech house`
+to `house` so they don't split into separate folders. A handful of aliases
+(`dnb` → `drum and bass`, etc.) are built in; your own are applied on top.
 
 Re-running a playlist is cheap: each track is downloaded straight into your output
 folder and moved into its genre folder, so a re-run skips everything that's

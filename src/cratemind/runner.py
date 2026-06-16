@@ -45,6 +45,9 @@ def run_crate(
     else:
         backend_name, fetched = result
         playlist_name = None
+    # Apply the user's saved genre aliases for this run (carried on settings so
+    # the pure sort/resolve layers don't need the store).
+    settings = settings.with_(aliases=store.aliases())
     stored = store.tracks(playlist_url)
     sorted_before = [t for t in stored if t.status == "sorted"]
     done_ids = {t.spotify_id for t in sorted_before}

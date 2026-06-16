@@ -64,6 +64,7 @@ def sort_track(
         audio_genre_lookup=audio_genre_lookup,
         coarse_genre_lookup=coarse_genre_lookup,
         artist_genre_lookup=artist_genre_lookup,
+        aliases=settings.aliases or None,
     )
     folder = destination_dir(track, settings, genre)
     # Defense in depth: a template/genre must never escape the output root.

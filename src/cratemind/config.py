@@ -31,6 +31,10 @@ class Settings:
     # How the key is written: "camelot" (8A — most DJ software) or "musical" (Am —
     # what Mixxx expects in the standard key field).
     key_notation: str = "camelot"
+    # User-defined genre aliases, applied during sorting. A runtime carrier filled
+    # from the store per run (see runner) — NOT persisted via prefs, which is why
+    # it's excluded from prefs.load/save.
+    aliases: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.audio_format not in AUDIO_FORMATS:

@@ -205,6 +205,10 @@ class CrateStore:
         )
         self.conn.commit()
 
+    def delete_alias(self, name: str) -> None:
+        _ = self.conn.execute("DELETE FROM aliases WHERE name=?", (name,))
+        self.conn.commit()
+
     def aliases(self) -> dict[str, str]:
         rows = self.conn.execute("SELECT name, canonical FROM aliases").fetchall()
         return {r["name"]: r["canonical"] for r in rows}

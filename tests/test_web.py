@@ -109,6 +109,65 @@ def test_crates_page_lists_past_runs(tmp_path, monkeypatch):
     assert "1 sorted" in response.text
 
 
+def test_settings_lists_default_and_custom_aliases(tmp_path, monkeypatch):
+    from cratemind.store.db import CrateStore
+
+    db = tmp_path / "s.db"
+    monkeypatch.setattr(appmod, "open_store", lambda: CrateStore(db))
+    seed = CrateStore(db)
+    seed.set_alias("techno", "warehouse")
+    seed.close()
+
+    text = client.get("/settings").text
+    assert "warehouse" in text  # the custom alias
+    assert "drum and bass" in text  # a built-in default alias shown read-only
+
+
+def test_add_alias_normalizes_and_persists(tmp_path, monkeypatch):
+    from cratemind.store.db import CrateStore
+
+    db = tmp_path / "s.db"
+    monkeypatch.setattr(appmod, "open_store", lambda: CrateStore(db))
+    # "Hard Techno" / "Warehouse" -> normalized lowercase keys/values.
+    r = client.post("/settings/alias", data={"name": "Hard Techno", "canonical": "Warehouse"})
+    assert r.status_code in (200, 303)
+    store = CrateStore(db)
+    assert store.aliases() == {"hard techno": "warehouse"}
+    store.close()
+
+
+def test_delete_alias_removes_it(tmp_path, monkeypatch):
+    from cratemind.store.db import CrateStore
+
+    db = tmp_path / "s.db"
+    monkeypatch.setattr(appmod, "open_store", lambda: CrateStore(db))
+    seed = CrateStore(db)
+    seed.set_alias("dnb", "drum and bass")
+    seed.close()
+
+    r = client.post("/settings/alias/delete", data={"name": "dnb"})
+    assert r.status_code in (200, 303)
+    store = CrateStore(db)
+    assert store.aliases() == {}
+    store.close()
+
+
+def test_delete_alias_normalizes_name_like_add(tmp_path, monkeypatch):
+    from cratemind.store.db import CrateStore
+
+    db = tmp_path / "s.db"
+    monkeypatch.setattr(appmod, "open_store", lambda: CrateStore(db))
+    seed = CrateStore(db)
+    seed.set_alias("drum and bass", "dnb")  # stored under the normalized key
+    seed.close()
+
+    # Posting a non-normalized name must still delete the normalized entry.
+    client.post("/settings/alias/delete", data={"name": "Drum & Bass"})
+    store = CrateStore(db)
+    assert store.aliases() == {}
+    store.close()
+
+
 def test_export_stored_crate_from_disk(tmp_path, monkeypatch):
     from cratemind.store.db import CrateStore, run_id_for
 

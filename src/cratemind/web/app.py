@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from .. import __version__
 from ..config import DEFAULT_TEMPLATE, Settings
+from ..genre.canonical import DEFAULT_ALIASES, normalize_genre
 from ..manifest import CrateManifest
 from ..prefs import load_settings, save_settings
 from ..share import share_crate
@@ -178,6 +179,42 @@ def rerun_crate(run_id: str) -> Response:
     job = jobs.start(run_url, load_settings())
     _state["active"] = job.id
     return RedirectResponse("/", status_code=303)
+
+
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request) -> HTMLResponse:
+    store = open_store()
+    try:
+        custom = store.aliases()
+    finally:
+        store.close()
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {"version": __version__, "defaults": DEFAULT_ALIASES, "custom": custom},
+    )
+
+
+@app.post("/settings/alias")
+def add_alias(name: str = Form(...), canonical: str = Form(...)) -> Response:
+    key, value = normalize_genre(name), normalize_genre(canonical)
+    if key and value:  # ignore blank submissions
+        store = open_store()
+        try:
+            store.set_alias(key, value)
+        finally:
+            store.close()
+    return RedirectResponse("/settings", status_code=303)
+
+
+@app.post("/settings/alias/delete")
+def remove_alias(name: str = Form(...)) -> Response:
+    store = open_store()
+    try:
+        store.delete_alias(normalize_genre(name))  # match the normalized stored key
+    finally:
+        store.close()
+    return RedirectResponse("/settings", status_code=303)
 
 
 @app.get("/runs/{job_id}/export")
