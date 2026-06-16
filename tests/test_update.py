@@ -20,6 +20,9 @@ def test_is_newer_compares_semver_ignoring_v_prefix():
     assert update.is_newer("0.1.1", "0.1.0") is True
     assert update.is_newer("v0.1.0", "0.1.0") is False  # same version
     assert update.is_newer("0.1.0", "0.2.0") is False  # older remote
+    # Trailing-.0 segments must compare equal, not "newer" (tuple-length guard).
+    assert update.is_newer("0.1.0", "0.1") is False
+    assert update.is_newer("0.1", "0.1.0") is False
 
 
 def test_is_newer_is_false_on_unparseable_version():
@@ -91,6 +94,31 @@ def test_notify_if_due_runs_and_stamps_when_due(tmp_path):
     )
     assert calls == [1]  # check performed
     assert stamp.read_text() == "91000.0"  # timestamp recorded
+
+
+def test_notify_if_due_skips_check_when_stamp_unwritable():
+    # A read-only/invalid cache must skip the check, not fall back to every launch.
+    def boom() -> object:
+        raise OSError("read-only cache")
+
+    calls: list[int] = []
+    update.notify_if_due(now=lambda: 1e9, stamp_path=boom, check=lambda: calls.append(1))
+    assert calls == []
+
+
+def test_run_update_returns_status_line_when_apply_fails(tmp_path, monkeypatch):
+    install = tmp_path / "app"
+    install.mkdir()
+    (install / "pyproject.toml").write_text("x")  # looks like a source checkout
+    monkeypatch.setattr(update, "latest_release", lambda: update.Release("v9.9.9", "z"))
+    monkeypatch.setattr(update, "current_version", lambda: "0.1.0")
+
+    def boom(**_kwargs) -> None:
+        raise RuntimeError("uv sync exploded")
+
+    monkeypatch.setattr(update, "apply_update", boom)
+    message = update.run_update(install_dir=install)
+    assert "Update failed" in message  # status line, not a traceback
 
 
 def _zip_bytes(files: dict[str, str]) -> bytes:

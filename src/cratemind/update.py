@@ -64,6 +64,10 @@ def is_newer(remote: str, local: str) -> bool:
     remote_parts, local_parts = _version_tuple(remote), _version_tuple(local)
     if remote_parts is None or local_parts is None:
         return False  # fail safe: never act on a version we can't compare
+    # Pad to equal length so "0.1" and "0.1.0" compare equal (not "newer").
+    width = max(len(remote_parts), len(local_parts))
+    remote_parts += (0,) * (width - len(remote_parts))
+    local_parts += (0,) * (width - len(local_parts))
     return remote_parts > local_parts
 
 
@@ -169,15 +173,18 @@ def notify_if_due(
     check: Callable[[], None] = check_and_notify,
 ) -> None:
     """Run the launch notice at most once per 24h, so most launches hit no network."""
+    moment = now()  # capture once so the due check and the stamped value agree
     try:
         stamp = stamp_path()
         last = float(stamp.read_text()) if stamp.exists() else 0.0
-        if now() - last < _CHECK_INTERVAL_SECONDS:
+        if moment - last < _CHECK_INTERVAL_SECONDS:
             return
         stamp.parent.mkdir(parents=True, exist_ok=True)
-        _ = stamp.write_text(str(now()))
+        _ = stamp.write_text(str(moment))
     except Exception:
-        pass  # throttle bookkeeping must never break launch
+        # Can't persist the throttle (e.g. read-only cache) -> skip rather than
+        # check on every launch, preserving the <=1/day guarantee.
+        return
     check()
 
 
@@ -196,5 +203,8 @@ def run_update(install_dir: Path | None = None) -> str:
         return "Couldn't reach GitHub to check for updates."
     if not is_newer(release.version, current_version()):
         return f"Already up to date (v{current_version()})."
-    apply_update(zipball_url=release.zipball_url, install_dir=here)
+    try:
+        apply_update(zipball_url=release.zipball_url, install_dir=here)
+    except Exception as exc:  # download/unzip/uv sync failure -> status line, not a traceback
+        return f"Update failed: {exc}. Your install is unchanged; try again later."
     return f"Updated to {release.version.lstrip('vV')}. Restart cratemind to use it."
