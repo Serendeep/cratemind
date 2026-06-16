@@ -7,7 +7,10 @@ playlist resumes cleanly.
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ..download.base import Track
@@ -28,11 +31,36 @@ CREATE TABLE IF NOT EXISTS tracks (
     status      TEXT NOT NULL DEFAULT 'queued',
     PRIMARY KEY (run_url, spotify_id)
 );
+CREATE TABLE IF NOT EXISTS runs (
+    run_id      TEXT PRIMARY KEY,
+    run_url     TEXT NOT NULL UNIQUE,
+    name        TEXT,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS aliases (name TEXT PRIMARY KEY, canonical TEXT);
 """
 
 _DONE = "sorted"
+
+
+def run_id_for(run_url: str) -> str:
+    """Short stable id for a run, for clean URLs (the run_url is long and ugly)."""
+    return hashlib.sha1(run_url.encode()).hexdigest()[:12]
+
+
+@dataclass(frozen=True)
+class RunSummary:
+    """One past run for the crates list: identity, a name, and track counts."""
+
+    run_id: str
+    run_url: str
+    name: str
+    total: int
+    sorted: int
+    failed: int
+    updated_at: str
 
 
 def _to_track(row: sqlite3.Row) -> Track:
@@ -106,6 +134,54 @@ class CrateStore:
             (run_url,),
         ).fetchall()
         return [_to_track(r) for r in rows]
+
+    # runs ----------------------------------------------------------------
+    def upsert_run(self, run_url: str, name: str | None = None) -> None:
+        """Record (or touch) a run. A given name overwrites; None keeps the old."""
+        now = datetime.now(timezone.utc).isoformat()
+        _ = self.conn.execute(
+            """
+            INSERT INTO runs (run_id, run_url, name, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                updated_at=excluded.updated_at,
+                name=COALESCE(excluded.name, runs.name)
+            """,
+            (run_id_for(run_url), run_url, name, now, now),
+        )
+        self.conn.commit()
+
+    def runs(self) -> list[RunSummary]:
+        """Every recorded run with its track counts, most recently updated first."""
+        rows = self.conn.execute(
+            """
+            SELECT r.run_id, r.run_url, r.name, r.updated_at,
+                   COUNT(t.spotify_id) AS total,
+                   SUM(CASE WHEN t.status='sorted' THEN 1 ELSE 0 END) AS sorted,
+                   SUM(CASE WHEN t.status='failed' THEN 1 ELSE 0 END) AS failed
+            FROM runs r LEFT JOIN tracks t ON t.run_url = r.run_url
+            GROUP BY r.run_id
+            ORDER BY r.updated_at DESC
+            """
+        ).fetchall()
+        return [
+            RunSummary(
+                run_id=r["run_id"],
+                run_url=r["run_url"],
+                name=r["name"] or r["run_url"],
+                total=r["total"] or 0,
+                sorted=r["sorted"] or 0,
+                failed=r["failed"] or 0,
+                updated_at=r["updated_at"],
+            )
+            for r in rows
+        ]
+
+    def run_url_for_id(self, run_id: str) -> str | None:
+        row = self.conn.execute(
+            "SELECT run_url FROM runs WHERE run_id=?", (run_id,)
+        ).fetchone()
+        return row["run_url"] if row else None
 
     # settings ------------------------------------------------------------
     def set_setting(self, key: str, value: str) -> None:

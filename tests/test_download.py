@@ -89,7 +89,7 @@ def test_fetch_playlist_downloads_into_output_root(monkeypatch, tmp_path):
     monkeypatch.setattr(backends, "_run", fake_run)
     monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "Song", "artist": "X", "genre": None})
 
-    name, tracks = fetch_playlist(URL, settings)
+    name, tracks, _name = fetch_playlist(URL, settings)
     assert name == "spotdl"
     assert len(tracks) == 1 and tracks[0].source == "spotdl"
 
@@ -110,7 +110,7 @@ def test_fetch_playlist_falls_through_when_backend_downloads_nothing(monkeypatch
 
     monkeypatch.setattr(backends, "_run", fake_run)
     monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "S", "artist": "A", "genre": None})
-    name, tracks = fetch_playlist(URL, settings)
+    name, tracks, _name = fetch_playlist(URL, settings)
     assert name == "spotdl"  # must fall through, not return spotiflac's empty result
     assert len(tracks) == 1
 
@@ -120,7 +120,7 @@ def test_fetch_playlist_returns_empty_when_nothing_new(monkeypatch, tmp_path):
     # That's (name, []), NOT an error — the runner decides if it's a real failure.
     settings = Settings(output_dir=tmp_path, audio_format="mp3")
     monkeypatch.setattr(backends, "_run", lambda _cmd: None)  # runs, writes nothing
-    name, tracks = fetch_playlist(URL, settings)
+    name, tracks, _name = fetch_playlist(URL, settings)
     assert name == "spotdl"
     assert tracks == []
 

@@ -96,6 +96,7 @@ class SpotdlBackend:
 
     def __init__(self, audio_format: str) -> None:
         self.audio_format: str = audio_format
+        self.playlist_name: str | None = None  # captured from the tracklist save-file
 
     def supports(self, audio_format: str) -> bool:
         return audio_format in ("flac", "mp3", "m4a")
@@ -107,9 +108,21 @@ class SpotdlBackend:
         _save_tracklist(playlist_url, save_file)
         command = build_spotdl_command(playlist_url, out_dir, self.audio_format)
         downloaded = _run_and_collect(command, out_dir, self.name)
+        self.playlist_name = _playlist_name(save_file)
         failed = _failed_from_expected(save_file, downloaded, self.name)
         save_file.unlink(missing_ok=True)
         return downloaded + failed
+
+
+def _playlist_name(save_file: Path) -> str | None:
+    """The playlist's display name from a spotdl save-file, if available."""
+    if not save_file.exists():
+        return None
+    try:
+        songs = json.loads(save_file.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+    return (songs[0].get("list_name") if songs else None) or None
 
 
 def _save_tracklist(playlist_url: str, save_file: Path) -> None:
@@ -185,12 +198,15 @@ def select_backends(audio_format: str) -> list[DownloadBackend]:
     return [SpotdlBackend(audio_format)]
 
 
-def fetch_playlist(playlist_url: str, settings: Settings) -> tuple[str, list[Track]]:
+def fetch_playlist(
+    playlist_url: str, settings: Settings
+) -> tuple[str, list[Track], str | None]:
     """Download the playlist with the first available backend.
 
-    Returns ``(name, tracks)``; ``(name, [])`` when a backend ran but found
-    nothing new (a rerun). Raises BackendUnavailable only when nothing is
-    installed, so the caller can tell "no new tracks" from "no downloader".
+    Returns ``(backend, tracks, playlist_name)``; an empty track list when a
+    backend ran but found nothing new (a rerun). Raises BackendUnavailable only
+    when nothing is installed, so the caller can tell "no new tracks" from "no
+    downloader". The playlist name is best-effort (None when unknown).
     """
     if "open.spotify.com" not in playlist_url and not playlist_url.startswith("spotify:"):
         raise BackendUnavailable("not a Spotify playlist URL")
@@ -204,10 +220,10 @@ def fetch_playlist(playlist_url: str, settings: Settings) -> tuple[str, list[Tra
             continue
         ran_name = backend.name
         if tracks:
-            return backend.name, tracks
+            return backend.name, tracks, getattr(backend, "playlist_name", None)
     if ran_name is None:
         # Every backend was unavailable — nothing is installed to download with.
         raise BackendUnavailable(f"no download backend available: {install_error}")
     # A backend ran but produced no new files; the caller checks the store to
     # decide whether that's a real failure or just a rerun with nothing to do.
-    return ran_name, []
+    return ran_name, [], None

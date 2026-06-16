@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 
 from ..config import Settings
 from ..download.base import Track
+from ..prefs import db_path
 from ..runner import run_crate
 from ..store.db import CrateStore
 
@@ -23,6 +24,11 @@ Runner = Callable[..., "tuple[str, list[Track]]"]
 
 def _thread_spawn(work: Callable[[], None]) -> None:
     threading.Thread(target=work, daemon=True).start()
+
+
+def open_store() -> CrateStore:
+    """The persistent store on disk, so runs survive restarts."""
+    return CrateStore(db_path())
 
 
 @dataclass
@@ -41,7 +47,7 @@ class JobManager:
     def __init__(
         self,
         *,
-        store_factory: Callable[[], CrateStore] = CrateStore,
+        store_factory: Callable[[], CrateStore] = open_store,
         spawn: Spawn = _thread_spawn,
     ) -> None:
         self._jobs: dict[str, Job] = {}

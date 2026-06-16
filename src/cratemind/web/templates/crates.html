@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cratemind / crates</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root{--bg:#0c0d0f;--panel:#141519;--line:#23252b;--t1:#e9eaec;--t2:#989aa1;--t3:#6a6d75;--acc:#7fb98a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--t1);font-family:'Inter',system-ui,sans-serif;line-height:1.5}
+  main{max-width:760px;margin:0 auto;padding:40px 22px}
+  .top{display:flex;justify-content:space-between;align-items:baseline}
+  h1{font-size:19px;margin:0;font-weight:600}
+  h1 span{color:var(--t3);font-weight:400}
+  a{color:var(--acc);text-decoration:none}
+  .ver{color:var(--t3);font-size:12px}
+  .lead{color:var(--t2);font-size:13px;margin:6px 0 18px}
+  .label{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:26px 0 12px}
+  .crate{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+  .crate .nm{flex:1;min-width:0}
+  .crate .t{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .crate .meta{color:var(--t3);font-family:ui-monospace,monospace;font-size:12px;margin-top:3px}
+  .btn{font-size:12px;border:1px solid var(--line);background:var(--panel);color:var(--t1);border-radius:7px;padding:7px 12px;cursor:pointer;text-decoration:none;white-space:nowrap}
+  .btn:hover{border-color:var(--t3)}
+  form{margin:0}
+  .empty{color:var(--t2);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>cratemind <span>/ crates</span></h1>
+    <span class="ver">v{{ version }} · local</span>
+  </div>
+  <p class="lead">Past runs. Export a crate.json or run one again; the analysis is reused on re-import.</p>
+  <a href="/">&larr; new dig</a>
+  <div class="label">// crates</div>
+  {% if not runs %}
+  <p class="empty">No crates yet. <a href="/">Start one.</a></p>
+  {% else %}
+  {% for run in runs %}
+  <div class="crate">
+    <div class="nm">
+      <div class="t">{{ run.name }}</div>
+      <div class="meta">{{ run.sorted }} sorted · {{ run.failed }} failed · {{ run.total }} total</div>
+    </div>
+    <a class="btn" href="/crates/{{ run.run_id }}/export">Export</a>
+    <form method="post" action="/crates/{{ run.run_id }}/run"><button class="btn" type="submit">Re-run</button></form>
+  </div>
+  {% endfor %}
+  {% endif %}
+</main>
+</body>
+</html>

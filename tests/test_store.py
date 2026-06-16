@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from cratemind.download.base import Track
-from cratemind.store.db import CrateStore
+from cratemind.store.db import CrateStore, run_id_for
 
 
 def _track(**overrides) -> Track:
@@ -62,6 +62,47 @@ def test_alias_map_roundtrip():
     store = CrateStore()
     store.set_alias("dnb", "drum and bass")
     assert store.aliases() == {"dnb": "drum and bass"}
+    store.close()
+
+
+def test_run_id_for_is_stable():
+    assert run_id_for("u") == run_id_for("u")
+    assert len(run_id_for("u")) == 12
+    assert run_id_for("u") != run_id_for("v")
+
+
+def test_runs_lists_with_track_counts():
+    store = CrateStore()
+    store.upsert_run("u", name="My Set")
+    store.upsert_track("u", _track(spotify_id="1", status="sorted"))
+    store.upsert_track("u", _track(spotify_id="2", status="failed"))
+    (run,) = store.runs()
+    assert run.name == "My Set"
+    assert (run.total, run.sorted, run.failed) == (2, 1, 1)
+    assert run.run_id == run_id_for("u")
+    store.close()
+
+
+def test_upsert_run_name_none_keeps_existing():
+    store = CrateStore()
+    store.upsert_run("u", name="Named")
+    store.upsert_run("u", name=None)  # a later touch must not clobber the name
+    assert store.runs()[0].name == "Named"
+    store.close()
+
+
+def test_runs_falls_back_to_url_when_unnamed():
+    store = CrateStore()
+    store.upsert_run("spotify:playlist:x", name=None)
+    assert store.runs()[0].name == "spotify:playlist:x"
+    store.close()
+
+
+def test_run_url_for_id_roundtrip():
+    store = CrateStore()
+    store.upsert_run("u", name="X")
+    assert store.run_url_for_id(run_id_for("u")) == "u"
+    assert store.run_url_for_id("does-not-exist") is None
     store.close()
 
 

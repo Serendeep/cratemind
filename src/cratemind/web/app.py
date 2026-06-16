@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, Request, Response, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .. import __version__
@@ -14,7 +14,7 @@ from ..config import DEFAULT_TEMPLATE, Settings
 from ..manifest import CrateManifest
 from ..prefs import load_settings, save_settings
 from ..share import share_crate
-from .jobs import JobManager
+from .jobs import JobManager, open_store
 from .view import paginate, summarize
 
 _BASE = Path(__file__).parent
@@ -129,6 +129,48 @@ def poll_run(request: Request, job_id: str, page: int = 1) -> HTMLResponse:
     if job is None:
         return HTMLResponse("<div class='err'>run not found</div>", status_code=404)
     return _results(request, job, page)
+
+
+@app.get("/crates", response_class=HTMLResponse)
+def crates(request: Request) -> HTMLResponse:
+    store = open_store()
+    try:
+        runs = store.runs()
+    finally:
+        store.close()
+    return templates.TemplateResponse(request, "crates.html", {"version": __version__, "runs": runs})
+
+
+@app.get("/crates/{run_id}/export")
+def export_stored_crate(run_id: str) -> Response:
+    store = open_store()
+    try:
+        run_url = store.run_url_for_id(run_id)
+        if run_url is None:
+            return Response("crate not found", status_code=404)
+        tracks = store.tracks(run_url)
+    finally:
+        store.close()
+    manifest = CrateManifest.from_tracks(run_url, tracks)
+    return Response(
+        manifest.to_json(),
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="crate.json"'},
+    )
+
+
+@app.post("/crates/{run_id}/run")
+def rerun_crate(run_id: str) -> Response:
+    store = open_store()
+    try:
+        run_url = store.run_url_for_id(run_id)
+    finally:
+        store.close()
+    if run_url is None:
+        return Response("crate not found", status_code=404)
+    job = jobs.start(run_url, load_settings())
+    _state["active"] = job.id
+    return RedirectResponse("/", status_code=303)
 
 
 @app.get("/runs/{job_id}/export")

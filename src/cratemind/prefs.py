@@ -27,6 +27,11 @@ def prefs_path() -> Path:
     return _data_dir() / "prefs.json"
 
 
+def db_path() -> Path:
+    """The persistent SQLite store, so runs survive restarts (resume + crate history)."""
+    return _data_dir() / "cratemind.db"
+
+
 def load_settings() -> Settings:
     path = prefs_path()
     if not path.exists():

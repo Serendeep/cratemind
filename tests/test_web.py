@@ -73,6 +73,49 @@ def test_poll_unknown_run_is_404():
     assert client.get("/runs/does-not-exist").status_code == 404
 
 
+def test_crates_page_lists_past_runs(tmp_path, monkeypatch):
+    from cratemind.store.db import CrateStore
+
+    db = tmp_path / "c.db"
+    monkeypatch.setattr(appmod, "open_store", lambda: CrateStore(db))
+    url = "https://open.spotify.com/playlist/x"
+    seed = CrateStore(db)
+    seed.upsert_run(url, name="Alien Perception")
+    seed.upsert_track(url, Track(spotify_id="1", title="T", artist="A", status="sorted"))
+    seed.close()
+
+    response = client.get("/crates")
+    assert response.status_code == 200
+    assert "Alien Perception" in response.text
+    assert "1 sorted" in response.text
+
+
+def test_export_stored_crate_from_disk(tmp_path, monkeypatch):
+    from cratemind.store.db import CrateStore, run_id_for
+
+    db = tmp_path / "c.db"
+    monkeypatch.setattr(appmod, "open_store", lambda: CrateStore(db))
+    url = "https://open.spotify.com/playlist/x"
+    seed = CrateStore(db)
+    seed.upsert_run(url, name="X")
+    seed.upsert_track(
+        url, Track(spotify_id="1", title="T", artist="A", genre="techno", status="sorted")
+    )
+    seed.close()
+
+    response = client.get(f"/crates/{run_id_for(url)}/export")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert "techno" in response.text  # the stored analysis, exported with no live job
+
+
+def test_export_unknown_crate_is_404(tmp_path, monkeypatch):
+    from cratemind.store.db import CrateStore
+
+    monkeypatch.setattr(appmod, "open_store", lambda: CrateStore(tmp_path / "c.db"))
+    assert client.get("/crates/deadbeef0000/export").status_code == 404
+
+
 def test_run_without_backend_shows_error(monkeypatch):
     # inline manager runs the job synchronously; no spotdl -> error partial
     monkeypatch.setattr(appmod, "jobs", JobManager(spawn=lambda work: work()))

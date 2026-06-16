@@ -17,7 +17,10 @@ from .manifest import TrackEntry
 from .pipeline import place_from_manifest, process_track
 from .store.db import CrateStore
 
-Fetch = Callable[[str, Settings], "tuple[str, list[Track]]"]
+Fetch = Callable[
+    [str, Settings],
+    "tuple[str, list[Track]] | tuple[str, list[Track], str | None]",
+]
 Process = Callable[[Track, Settings], Track]
 OnUpdate = Callable[[Track], None]
 
@@ -32,10 +35,16 @@ def run_crate(
     on_update: OnUpdate | None = None,
     overrides: dict[str, TrackEntry] | None = None,
 ) -> tuple[str, list[Track]]:
-    backend_name, fetched = fetch(playlist_url, settings)
-    # fetch returns downloaded files plus failed stubs (playlist songs spotdl
-    # couldn't get, file_path None, status "failed"). Tracks already sorted on a
-    # prior run keep their analysis in the store; only new files need processing.
+    result = fetch(playlist_url, settings)
+    # fetch_playlist returns (backend, tracks, playlist_name); test fakes return
+    # the 2-tuple. fetched holds downloaded files plus failed stubs (playlist songs
+    # spotdl couldn't get, file_path None, status "failed"). Tracks already sorted
+    # on a prior run keep their analysis in the store; only new files are processed.
+    if len(result) == 3:
+        backend_name, fetched, playlist_name = result
+    else:
+        backend_name, fetched = result
+        playlist_name = None
     stored = store.tracks(playlist_url)
     sorted_before = [t for t in stored if t.status == "sorted"]
     done_ids = {t.spotify_id for t in sorted_before}
@@ -58,6 +67,9 @@ def run_crate(
         # Nothing downloaded this run and nothing from a prior run — the
         # downloader genuinely produced nothing to show.
         raise BackendUnavailable(f"{backend_name} downloaded no tracks")
+
+    # Record the run so it shows up in the crates list and can be re-exported later.
+    store.upsert_run(playlist_url, name=playlist_name)
 
     results: list[Track] = []
     # Show the existing crate first so a rerun isn't blank while new files process.
