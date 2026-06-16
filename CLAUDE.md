@@ -45,6 +45,10 @@ analysis is local (librosa for BPM/key, an optional ONNX model for genre).
 
 ## How we work
 
+Run `./scripts/setup-dev.sh` once after cloning — it installs dev deps and turns
+on the git hooks (`commit-msg` enforces Conventional Commits; `pre-push` runs
+ruff + pytest). Then:
+
 1. Branch off `main` (`feat/...`, `fix/...`).
 2. **Test first.** Write a failing test, then the code (see existing
    `tests/test_*.py` for the style — DI fakes, no network).
