@@ -36,6 +36,25 @@ def test_paginate_empty_is_page_one_of_one():
     assert page.tracks == [] and page.number == 1 and page.total == 1
 
 
+def test_poll_shows_determinate_download_progress_when_total_known():
+    # No tracks yet, but spotdl's tracklist gave a total -> "N / TOTAL" + real bar.
+    job = Job(id="dl1", playlist_url="u", status="running", downloaded=3, total_expected=10)
+    appmod.jobs._jobs["dl1"] = job  # type: ignore[attr-defined]
+    text = client.get("/runs/dl1").text
+    assert "3</b> / 10 tracks" in text
+    assert "width:30%" in text
+    assert "indet" not in text  # determinate bar, not the spinner
+
+
+def test_poll_falls_back_to_indeterminate_when_total_unknown():
+    # SpotiFLAC (or pre-tracklist) -> total 0 -> indeterminate spinner.
+    job = Job(id="dl2", playlist_url="u", status="running", downloaded=2, total_expected=0)
+    appmod.jobs._jobs["dl2"] = job  # type: ignore[attr-defined]
+    text = client.get("/runs/dl2").text
+    assert "2</b> tracks ready" in text
+    assert "prog indet" in text
+
+
 def test_poll_renders_requested_page_with_controls():
     job = Job(id="pg1", playlist_url="u", status="done", tracks=_sorted_tracks(20))
     appmod.jobs._jobs["pg1"] = job  # type: ignore[attr-defined]

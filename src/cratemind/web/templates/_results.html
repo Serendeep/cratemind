@@ -4,8 +4,13 @@
 <div id="run"{% if job.status == "running" %} hx-get="/runs/{{ job.id }}?page={{ page.number }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
   {% if not page.tracks %}
   <div class="dl">
+    {% if job.total_expected %}
+    <div class="lbl">Downloading… <b>{{ job.downloaded }}</b> / {{ job.total_expected }} track{{ '' if job.total_expected == 1 else 's' }}. The first tracks can take a minute or two.</div>
+    <div class="prog"><i style="width:{{ [(100 * job.downloaded / job.total_expected) | round | int, 100] | min }}%"></i></div>
+    {% else %}
     <div class="lbl">Downloading… <b>{{ job.downloaded }}</b> track{{ '' if job.downloaded == 1 else 's' }} ready. The first tracks can take a minute or two.</div>
     <div class="prog indet"><i></i></div>
+    {% endif %}
   </div>
   {% else %}
   <div class="label">// {{ "running" if job.status == "running" else "crate" }}</div>

@@ -157,6 +157,28 @@ def test_fetch_reports_undownloaded_songs_as_failed(monkeypatch, tmp_path):
     assert not (tmp_path / backends.TRACKLIST_FILE).exists()  # tracklist cleaned up
 
 
+def test_expected_count_reads_tracklist_size(tmp_path):
+    import json
+
+    (tmp_path / backends.TRACKLIST_FILE).write_text(
+        json.dumps([{"name": "One", "artist": "A"}, {"name": "Two", "artist": "B"}])
+    )
+    assert backends.expected_count(tmp_path) == 2
+
+
+def test_expected_count_zero_when_no_tracklist_or_corrupt(tmp_path):
+    assert backends.expected_count(tmp_path) == 0  # no save-file yet (SpotiFLAC, or pre-save)
+    (tmp_path / backends.TRACKLIST_FILE).write_text("{not json")
+    assert backends.expected_count(tmp_path) == 0  # corrupt -> 0, never raises
+
+
+def test_expected_count_zero_for_non_list_json(tmp_path):
+    # A format change (object/string instead of a list) must not be miscounted:
+    # len({}) is 0 and len("abc") is 3 — both wrong — so guard on list-ness.
+    (tmp_path / backends.TRACKLIST_FILE).write_text('{"tracks": [1, 2, 3]}')
+    assert backends.expected_count(tmp_path) == 0
+
+
 def test_fetch_returns_partial_files_when_backend_crashes(monkeypatch, tmp_path):
     # A mid-download crash still leaves files in the root — process them, don't orphan.
     def fake_run(_command):

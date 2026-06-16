@@ -45,6 +45,26 @@ def staging_files(directory: Path) -> set[Path]:
     return {p for p in directory.glob("*") if p.is_file() and p.suffix.lower() in AUDIO_SUFFIXES}
 
 
+def expected_count(directory: Path) -> int:
+    """Playlist size from spotdl's tracklist save-file, or 0 if unknown.
+
+    spotdl writes the full tracklist before downloading, so this gives the live
+    progress denominator ("12 / 50"). Returns 0 when the file is absent (the
+    SpotiFLAC backend never writes one) or corrupt — the UI then falls back to an
+    indeterminate bar.
+    """
+    save_file = directory / TRACKLIST_FILE
+    if not save_file.exists():
+        return 0
+    try:
+        songs = json.loads(save_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+        return 0
+    # Guard the shape: a future spotdl save-file that's an object or string would
+    # otherwise be miscounted (len({}) == 0, len("abc") == 3) rather than ignored.
+    return len(songs) if isinstance(songs, list) else 0
+
+
 def build_spotdl_command(playlist_url: str, out_dir: Path, audio_format: str) -> list[str]:
     # spotdl's --output is a filename TEMPLATE, not a directory, so include a name
     # pattern to make files land inside out_dir with sensible names.

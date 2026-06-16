@@ -39,6 +39,7 @@ class Job:
     error: str | None = None
     backend: str | None = None
     downloaded: int = 0  # new files downloaded this run, for live progress feedback
+    total_expected: int = 0  # playlist size from spotdl's tracklist (0 = unknown)
     tracks: list[Track] = field(default_factory=list)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -78,16 +79,27 @@ class JobManager:
             # it, so create it here on the worker thread, not the caller's.
             store = self._store_factory()
             stop = threading.Event()
+            # Tracks already sorted on a prior run aren't re-downloaded, so the
+            # download progress denominator is "new this run" = playlist - sorted.
+            prior_sorted = sum(1 for t in store.tracks(playlist_url) if t.status == "sorted")
 
             def monitor() -> None:
                 # Count unsorted files in the output root (sorted ones live in
                 # subfolders) so the UI shows live download progress. Root-only
-                # avoids counting a prior run's already-sorted tracks.
-                from ..download.backends import staging_files
+                # avoids counting a prior run's already-sorted tracks. The total
+                # comes from spotdl's tracklist save-file (0 until it's written,
+                # and for SpotiFLAC which writes none) to make the bar determinate.
+                from ..download.backends import expected_count, staging_files
 
                 while not stop.is_set():
+                    raw_total = expected_count(settings.output_dir)
                     with job.lock:
                         job.downloaded = len(staging_files(settings.output_dir))
+                        # Keep the last-known total: the save-file is deleted when
+                        # the download finishes, and dropping back to 0 would flash
+                        # the bar to the indeterminate state before tracks appear.
+                        if raw_total:
+                            job.total_expected = max(raw_total - prior_sorted, 0)
                     stop.wait(2)
 
             threading.Thread(target=monitor, daemon=True).start()
