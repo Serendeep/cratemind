@@ -210,5 +210,5 @@ class CrateStore:
         self.conn.commit()
 
     def aliases(self) -> dict[str, str]:
-        rows = self.conn.execute("SELECT name, canonical FROM aliases").fetchall()
+        rows = self.conn.execute("SELECT name, canonical FROM aliases ORDER BY name").fetchall()
         return {r["name"]: r["canonical"] for r in rows}

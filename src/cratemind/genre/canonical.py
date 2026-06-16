@@ -8,6 +8,7 @@ whitespace, and apply an alias map.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 
 _WHITESPACE = re.compile(r"\s+")
 
@@ -30,7 +31,7 @@ def normalize_genre(name: str) -> str:
     return _WHITESPACE.sub(" ", text).strip()
 
 
-def canonicalize(name: str | None, aliases: dict[str, str] | None = None) -> str | None:
+def canonicalize(name: str | None, aliases: Mapping[str, str] | None = None) -> str | None:
     """Return a normalized genre, or None if there's nothing usable."""
     if name is None:
         return None
