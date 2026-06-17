@@ -151,6 +151,13 @@ class CrateStore:
         )
         self.conn.commit()
 
+    def run_name(self, run_url: str) -> str | None:
+        """The playlist name recorded for a run, or None if unknown/unrecorded."""
+        row = self.conn.execute(
+            "SELECT name FROM runs WHERE run_id=?", (run_id_for(run_url),)
+        ).fetchone()
+        return row["name"] if row else None
+
     def runs(self) -> list[RunSummary]:
         """Every recorded run with its track counts, most recently updated first."""
         rows = self.conn.execute(

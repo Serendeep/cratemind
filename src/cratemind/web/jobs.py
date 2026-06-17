@@ -35,6 +35,7 @@ def open_store() -> CrateStore:
 class Job:
     id: str
     playlist_url: str
+    playlist_name: str | None = None  # from spotdl's tracklist; None until known
     status: str = "running"  # running | done | error
     error: str | None = None
     backend: str | None = None
@@ -109,6 +110,7 @@ class JobManager:
                 )
                 with job.lock:
                     job.backend = backend
+                    job.playlist_name = store.run_name(playlist_url)
                     job.status = "done"
             except Exception as error:  # surface in the UI, don't crash the server
                 with job.lock:

@@ -15,7 +15,7 @@
   {% else %}
   <div class="label">// {{ "running" if job.status == "running" else "crate" }}</div>
   <div class="runline">
-    <span class="nm2 mono">{{ job.playlist_url }}</span>
+    <span class="nm2 mono">{{ job.playlist_name or job.playlist_url }}</span>
     <span class="pr"><b>{{ summary.sorted }}</b> sorted · {{ summary.working }} working · {{ summary.total }} total{% if job.backend %} · {{ job.backend }}{% endif %}</span>
   </div>
   <div class="prog"><i style="width:{{ summary.progress_pct }}%"></i></div>

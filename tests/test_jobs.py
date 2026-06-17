@@ -24,6 +24,17 @@ def test_job_runs_and_collects_tracks():
     assert job.tracks[0].status == "sorted"
 
 
+def test_job_surfaces_playlist_name():
+    manager = _inline()
+
+    def runner(_url, _settings, store, *, on_update=None):
+        store.upsert_run("u", name="Friday Bangers")  # what fetch_playlist captures
+        return "spotdl", []
+
+    job = manager.start("u", Settings(), runner=runner)
+    assert job.playlist_name == "Friday Bangers"
+
+
 def test_job_records_error():
     manager = _inline()
 

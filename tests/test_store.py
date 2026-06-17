@@ -10,6 +10,15 @@ def _track(**overrides) -> Track:
     return Track(**base)  # type: ignore[arg-type]
 
 
+def test_run_name_returns_stored_name_or_none():
+    store = CrateStore()
+    assert store.run_name("u") is None  # no run recorded yet
+    store.upsert_run("u", name="Friday Bangers")
+    assert store.run_name("u") == "Friday Bangers"
+    store.upsert_run("v")  # recorded without a name
+    assert store.run_name("v") is None
+
+
 def test_upsert_and_read_roundtrip():
     store = CrateStore()
     store.upsert_track(
