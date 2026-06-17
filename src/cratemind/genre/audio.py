@@ -150,7 +150,10 @@ def _predict(path: Path):  # pragma: no cover - exercised via validation
         return None
     session = _session()
     input_name = session.get_inputs()[0].name
-    outputs = session.run(None, {input_name: patches})
+    # Ask only for the class head. Requesting None returns all 14 outputs,
+    # including 12 unused per-layer token tensors whose model-declared rank-1
+    # shape mismatches their rank-3 runtime shape, spamming onnxruntime warnings.
+    outputs = session.run(["logits"], {input_name: patches})
     n_classes = len(_labels())
     preds = next(
         (np.asarray(o) for o in outputs if np.ndim(o) == 2 and np.shape(o)[-1] == n_classes),

@@ -21,3 +21,30 @@ def test_lookup_swallows_errors(monkeypatch):
 
     monkeypatch.setattr(audio, "_predict", boom)
     assert audio.lookup_audio_genre(Path("/x.flac")) is None
+
+
+def test_predict_requests_only_the_class_head(monkeypatch):
+    """Only the logits output is requested, so onnxruntime doesn't materialize
+    the 12 unused per-layer token outputs (each emits a shape-mismatch warning)."""
+    import numpy as np
+
+    captured = {}
+
+    class _Input:
+        name = "melspectrogram"
+
+    class FakeSession:
+        def get_inputs(self):
+            return [_Input()]
+
+        def run(self, output_names, feeds):
+            captured["output_names"] = output_names
+            return [np.zeros((2, 3), dtype=np.float32)]
+
+    monkeypatch.setattr(audio, "_patches", lambda _p: np.zeros((2, 626, 96), dtype=np.float32))
+    monkeypatch.setattr(audio, "_session", lambda: FakeSession())
+    monkeypatch.setattr(audio, "_labels", lambda: ["a", "b", "c"])
+
+    result = audio._predict(Path("/x.flac"))
+    assert result is not None
+    assert captured["output_names"] == ["logits"]
