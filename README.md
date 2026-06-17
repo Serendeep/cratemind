@@ -49,50 +49,45 @@ and no genre can be found, the track is grouped by artist instead; never lost.
 
 ---
 
-## Get cratemind
+## Install (one command)
 
-Download the project as a ZIP from its GitHub page (the green **Code** button →
-**Download ZIP**) and unzip it, or clone it:
+One line installs everything — uv, spotdl, ffmpeg, and cratemind itself as a
+global `cratemind` command. It pulls the latest release and asks whether to set
+up the genre model:
 
-```
-git clone https://github.com/Serendeep/cratemind.git
-cd cratemind
-```
+- macOS / Linux:
+  ```
+  curl -fsSL https://raw.githubusercontent.com/Serendeep/cratemind/main/install.sh | sh
+  ```
+- Windows (PowerShell):
+  ```
+  powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/Serendeep/cratemind/main/install.ps1 | iex"
+  ```
 
----
+Anything already installed is left alone. When it finishes, open a new terminal
+and run `cratemind`. Prefer to install by hand? See [Manual setup](#manual-setup)
+below.
 
-## Setup (one command)
+Piped through `sh`/`iex` the installer can't prompt, so it takes the defaults —
+that **includes the ~330 MB genre model**. To run it interactively (and choose),
+download `install.sh` first and run it, or pass `--yes`/`-Yes` to confirm you
+want every default up front.
 
-From the cratemind folder, run the setup script for your system. It walks through
-each tool (uv, spotdl, ffmpeg), installs the app, and asks whether to set up the
-genre model now. Anything already installed is left alone:
+If no system ffmpeg is found, the installer fetches a portable copy through
+spotdl; the app adds it to its own PATH at startup, so you never touch
+environment variables.
 
-- macOS / Linux: `./setup.sh`
-- Windows (PowerShell): `./setup.ps1`
-
-Add `--yes` (or `-Yes` on Windows) to accept the defaults without prompts. Then
-jump to [Run it](#run-it). Prefer to install by hand? See
-[Manual setup](#manual-setup) below.
-
-If no system ffmpeg is found, setup fetches a portable copy through spotdl; the
-app adds it to its own PATH at startup, so you never touch environment variables.
-
-### Updating (no git required)
-
-Let cratemind update itself:
+### Updating
 
 ```
-uv run cratemind update
+cratemind update
 ```
 
 It checks the latest [GitHub release](https://github.com/Serendeep/cratemind/releases)
-and, if there's a newer one, downloads it over your install and re-syncs.
-cratemind also says on startup when a new version is out. The ~330 MB genre model
-and ffmpeg live in your user cache, **outside** the project folder, so an update
-reuses them instead of downloading them again; only the app environment relinks.
-
-To do it by hand: download the latest ZIP, extract it over your folder, and run
-the setup script again.
+and, if there's a newer one, reinstalls cratemind from it. cratemind also says on
+startup when a new version is out. The ~330 MB genre model and ffmpeg live in your
+user cache, so an update reuses them instead of downloading them again — only the
+app itself is rebuilt. Re-running the installer does the same thing.
 
 ---
 
@@ -127,25 +122,31 @@ Pin Python 3.12 — on newer interpreters spotdl's dependencies fail with an
 - Windows (winget): `winget install Gyan.FFmpeg`
 - Linux (apt): `sudo apt install ffmpeg`
 
-No system package manager? Once spotdl is installed, fetch a portable build into
-cratemind's cache with `uv run cratemind setup-ffmpeg`. The app finds it
+No system package manager? Install cratemind first (next step), then fetch a
+portable build into its cache with `cratemind setup-ffmpeg`. The app finds it
 automatically — no PATH changes needed.
 
-Then install cratemind's own dependencies:
+**4. cratemind**: the app itself, as a global command
 
 ```
-uv sync
+uv tool install "cratemind[audio-genre] @ git+https://github.com/Serendeep/cratemind@v0.3.0"
+uv tool update-shell
 ```
+
+Replace the tag with the latest from the
+[releases page](https://github.com/Serendeep/cratemind/releases). Drop
+`[audio-genre]` if you don't want the genre model. `uv tool update-shell` puts
+the `cratemind` command on your PATH.
 
 ---
 
 ## Run it
 
-From the cratemind folder:
+```
+cratemind
+```
 
-```
-uv run cratemind
-```
+(Installed from a clone instead? Run `uv run cratemind` from the project folder.)
 
 The first run takes a minute while uv sets things up. When it's ready it prints a
 link. Open `http://127.0.0.1:8000` in your browser. Paste a playlist link, pick
@@ -198,7 +199,8 @@ already sorted and only fetches what's new.
 
 cratemind reads the genre from the audio with an on-device model, so it works on
 underground tracks that have no genre tag. The model is an optional ~330 MB
-download. Fetch it once:
+download; the installer offers to fetch it. Already installed without it? Re-run
+the installer and choose yes, or from a clone:
 
 ```
 uv sync --extra audio-genre
@@ -233,8 +235,8 @@ MP3, or M4A). True lossless from Tidal/Qobuz is paused for now; see the
 
 - **"spotdl is not installed"** (or an "openssl outdated" error): run
   `uv tool install --force --python 3.12 spotdl`.
-- **"ffmpeg not found"**: run `uv run cratemind setup-ffmpeg`, or re-run the setup
-  script — both fetch a portable ffmpeg the app picks up automatically.
+- **"ffmpeg not found"**: run `cratemind setup-ffmpeg`, or re-run the installer —
+  both fetch a portable ffmpeg the app picks up automatically.
 - **A BPM looks wrong (half or double)**: widen or narrow the BPM window under
   Advanced so it matches the music you're sorting.
 
@@ -260,6 +262,8 @@ Pull requests are welcome. To get set up:
    ```
    uv sync --extra dev
    ```
+   `./setup.sh` (or `./setup.ps1`) sets up the full toolchain — spotdl, ffmpeg,
+   and the app — from your clone, if you want the external CLIs too.
 3. Make your change. Keep modules small and add a test for any new behavior.
 4. Run the tests and linter; both should pass before you open a PR (CI runs them too):
    ```
@@ -284,8 +288,8 @@ edit the version by hand:
    request that bumps the version in `pyproject.toml` and `__init__.py` and
    writes `CHANGELOG.md` from the commits since the last release.
 3. When you're ready to ship, **merge that release PR**. release-please then
-   tags `vX.Y.Z` and publishes a GitHub Release with the changelog and source
-   zip — which is what `cratemind update` pulls.
+   tags `vX.Y.Z` and publishes a GitHub Release with the changelog. `cratemind
+   update` and the installer reinstall from that new tag.
 
 Version bumps follow the commit types: `fix:` → patch, `feat:` → minor,
 `feat!:` / `BREAKING CHANGE:` → major. Several unreleased commits collapse into a

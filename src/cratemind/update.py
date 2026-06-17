@@ -1,27 +1,30 @@
-"""Self-update from GitHub Releases, for users who installed without git.
+"""Self-update for the globally-installed app.
 
-The supported install path is "download the repo, run setup, run the app" — no
-git, so `git pull` is not an option. This module lets the app update itself: it
-asks the GitHub Releases API for the latest version, and on request downloads
-that release's source zip, extracts it over the install directory, and re-syncs
-dependencies. The heavy artifacts (genre model, ffmpeg) live in the user cache,
-not the install dir, so an update never re-downloads them.
+cratemind installs as a uv tool (`uv tool install "cratemind @ git+…@<tag>"`), so
+the `cratemind` command lives on PATH and there is no source tree to patch. This
+module updates the app the way it was installed: it asks the GitHub Releases API
+for the latest version and, on request, runs `uv tool install --force` for that
+release's tag, which rebuilds the tool from the new source. The heavy artifacts
+(genre model, ffmpeg) live in the user cache, not the tool venv, so an update
+never re-downloads them.
 
-Network (`fetch_json`/`download`) and subprocess (`run`) are injected as
-callables with real defaults, so the decision logic and extract/swap mechanics
-are testable without touching the network or the filesystem outside a temp dir.
+The audio-genre extra is reinstalled only when it's already present, so updating
+never silently pulls the onnxruntime stack onto an install that skipped it.
+
+Network (`fetch_json`) and subprocess (`run`) are injected as callables with real
+defaults, so the decision logic and command construction are testable without
+touching the network or the system.
 
 Every step fails safe: an unparseable version, a network error, or a malformed
-release is treated as "no update", never an exception in the user's face.
+release is treated as "no update", never an exception in the user's face. A
+source checkout is refused outright — contributors update with `git pull`.
 """
 
 from __future__ import annotations
 
-import io
-import shutil
+import importlib.util
 import subprocess
 import time
-import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
@@ -32,14 +35,12 @@ _LATEST_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 
 # Injected dependency contracts.
 JsonFetcher = Callable[[str], dict[str, object]]
-Downloader = Callable[[str], bytes]
-Runner = Callable[[list[str], Path], object]
+Runner = Callable[[list[str]], object]
 
 
 @dataclass(frozen=True)
 class Release:
     version: str
-    zipball_url: str
 
 
 def current_version() -> str:
@@ -76,70 +77,53 @@ def _fetch_json(url: str) -> dict[str, object]:
 
     # Short connect timeout so an offline machine fails fast on launch rather
     # than stalling the startup check.
-    response = httpx.get(url, timeout=httpx.Timeout(connect=3, read=10, write=10, pool=10), follow_redirects=True)
+    response = httpx.get(
+        url, timeout=httpx.Timeout(connect=3, read=10, write=10, pool=10), follow_redirects=True
+    )
     _ = response.raise_for_status()
     return response.json()
 
 
 def latest_release(*, fetch_json: JsonFetcher = _fetch_json) -> Release | None:
-    """The latest published release, or None if it can't be fetched/parsed."""
+    """The latest published release tag, or None if it can't be fetched/parsed."""
     try:
         data = fetch_json(_LATEST_URL)
         tag = data.get("tag_name")
-        zipball = data.get("zipball_url")
     except Exception:  # network, JSON, or HTTP error — treat as "no info"
         return None
-    if not isinstance(tag, str) or not isinstance(zipball, str):
+    if not isinstance(tag, str):
         return None
-    return Release(version=tag, zipball_url=zipball)
+    return Release(version=tag)
 
 
-def _download(url: str) -> bytes:
-    import httpx
+def install_spec(tag: str, *, with_audio: bool) -> str:
+    """The uv-tool requirement string for a given release tag.
 
-    # Bounded read timeout so a stalled CDN can't hang `cratemind update` forever;
-    # 300s is generous for a source zip.
-    response = httpx.get(
-        url, timeout=httpx.Timeout(connect=10, read=300, write=60, pool=10), follow_redirects=True
-    )
-    _ = response.raise_for_status()
-    return response.content
-
-
-def _run(command: list[str], cwd: Path) -> None:
-    _ = subprocess.run(command, cwd=cwd, check=True)
-
-
-def apply_update(
-    *,
-    zipball_url: str,
-    install_dir: Path,
-    download: Downloader = _download,
-    run: Runner = _run,
-) -> None:
-    """Download the release zip, extract it over `install_dir`, and re-sync.
-
-    GitHub zipballs nest everything under a single top-level ``<owner>-<repo>-<sha>/``
-    directory; that prefix is stripped so files land at the install root.
+    A PEP 508 direct reference (`name[extra] @ git+url@ref`) so uv builds the tool
+    from that exact tag, pulling the audio-genre extra only when asked.
     """
-    raw = download(zipball_url)
-    root_dir = install_dir.resolve()
-    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-        members = archive.namelist()
-        prefix = members[0].split("/", 1)[0] + "/" if members else ""
-        for member in members:
-            if member.endswith("/") or not member.startswith(prefix):
-                continue
-            relative = member[len(prefix) :]
-            dest = (install_dir / relative).resolve()
-            # Guard against zip-slip: a crafted "../" entry must not escape the
-            # install dir. Silently skip anything that would write outside it.
-            if not dest.is_relative_to(root_dir):
-                continue
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            with archive.open(member) as src, dest.open("wb") as out:
-                _ = shutil.copyfileobj(src, out)
-    _ = run(["uv", "sync"], install_dir)
+    extra = "[audio-genre]" if with_audio else ""
+    return f"cratemind{extra} @ git+https://github.com/{REPO}@{tag}"
+
+
+def _has_audio_extra() -> bool:
+    """Whether the audio-genre stack is installed (onnxruntime is its marker dep)."""
+    return importlib.util.find_spec("onnxruntime") is not None
+
+
+# Generous bound: a git clone + dependency-wheel download over a slow link can
+# legitimately run minutes, but it must not hang the terminal forever. A timeout
+# surfaces as the "Update failed" status line via run_update's except.
+_INSTALL_TIMEOUT_SECONDS = 600
+
+
+def _run(command: list[str]) -> None:
+    _ = subprocess.run(command, check=True, timeout=_INSTALL_TIMEOUT_SECONDS)
+
+
+def apply_update(*, tag: str, with_audio: bool, run: Runner = _run) -> None:
+    """Reinstall the tool from `tag`, force-replacing the current install."""
+    _ = run(["uv", "tool", "install", "--force", install_spec(tag, with_audio=with_audio)])
 
 
 def check_and_notify(
@@ -188,23 +172,38 @@ def notify_if_due(
     check()
 
 
-def run_update(install_dir: Path | None = None) -> str:
-    """User-facing update: fetch latest, apply if newer, return a status line."""
-    here = install_dir or Path(__file__).resolve().parents[2]
-    # Only the source-tree layout is updatable in place. A wheel install resolves
-    # `here` to site-packages; refuse rather than extract a zip over it.
-    if not (here / "pyproject.toml").exists():
+def _is_source_checkout() -> bool:
+    """True when running from the repo source tree (a sibling pyproject.toml).
+
+    A wheel/tool install resolves this path into site-packages, where no
+    pyproject.toml sits — that's the updatable case.
+    """
+    # This file is src/cratemind/update.py, so parents[2] is the repo root in a
+    # src-layout checkout. Tied to that layout; revisit if the package moves.
+    return (Path(__file__).resolve().parents[2] / "pyproject.toml").exists()
+
+
+def run_update(
+    *,
+    is_source: Callable[[], bool] = _is_source_checkout,
+    latest: Callable[[], Release | None] = latest_release,
+    current: Callable[[], str] = current_version,
+    has_audio: Callable[[], bool] = _has_audio_extra,
+    apply: Callable[..., None] = apply_update,
+) -> str:
+    """User-facing update: fetch latest, reinstall if newer, return a status line."""
+    if is_source():
         return (
-            "Can't self-update: this doesn't look like a source install. "
-            "Download the latest release and re-run the setup script instead."
+            "This is a source checkout — update it with `git pull`. "
+            "`cratemind update` upgrades the installed app."
         )
-    release = latest_release()
+    release = latest()
     if release is None:
         return "Couldn't reach GitHub to check for updates."
-    if not is_newer(release.version, current_version()):
-        return f"Already up to date (v{current_version()})."
+    if not is_newer(release.version, current()):
+        return f"Already up to date (v{current()})."
     try:
-        apply_update(zipball_url=release.zipball_url, install_dir=here)
-    except Exception as exc:  # download/unzip/uv sync failure -> status line, not a traceback
+        apply(tag=release.version, with_audio=has_audio())
+    except Exception as exc:  # build/install failure -> status line, not a traceback
         return f"Update failed: {exc}. Your install is unchanged; try again later."
     return f"Updated to {release.version.lstrip('vV')}. Restart cratemind to use it."

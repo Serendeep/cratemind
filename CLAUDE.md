@@ -1,7 +1,9 @@
 # cratemind — notes for contributors (and Claude)
 
 cratemind downloads a Spotify playlist, detects each track's BPM, key, and genre,
-and files the audio into folders. It's a local FastAPI + HTMX app run with
+and files the audio into folders. It's a local FastAPI + HTMX app. End users
+install it with the one-line `install.sh`/`install.ps1`, which `uv tool install`s
+it as a global `cratemind` command; contributors run it from a clone with
 `uv run cratemind`. Downloads happen through external CLIs (spotdl, SpotiFLAC);
 analysis is local (librosa for BPM/key, an optional ONNX model for genre).
 
@@ -29,7 +31,8 @@ analysis is local (librosa for BPM/key, an optional ONNX model for genre).
 - `store/db.py` — SQLite (tracks, runs, settings, aliases).
 - `web/` — FastAPI routes + Jinja/HTMX templates.
 - `config.py` / `prefs.py` — `Settings` (frozen) and its JSON persistence.
-- `ffmpeg.py`, `update.py` — runtime ffmpeg provisioning and self-update.
+- `ffmpeg.py`, `update.py` — runtime ffmpeg provisioning and self-update
+  (`cratemind update` reinstalls the uv tool from the latest release tag).
 
 ## Conventions
 
