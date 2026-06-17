@@ -26,7 +26,9 @@ def test_lookup_swallows_errors(monkeypatch):
 def test_predict_requests_only_the_class_head(monkeypatch):
     """Only the logits output is requested, so onnxruntime doesn't materialize
     the 12 unused per-layer token outputs (each emits a shape-mismatch warning)."""
-    import numpy as np
+    import pytest
+
+    np = pytest.importorskip("numpy")  # _predict needs the optional audio stack
 
     captured = {}
 
