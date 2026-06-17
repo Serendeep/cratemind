@@ -1,6 +1,9 @@
 # cratemind
 
 [![CI](https://github.com/Serendeep/cratemind/actions/workflows/ci.yml/badge.svg)](https://github.com/Serendeep/cratemind/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Serendeep/cratemind?sort=semver)](https://github.com/Serendeep/cratemind/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](pyproject.toml)
 
 **Auto-sort any Spotify playlist into DJ-ready crates by genre and tempo.**
 
@@ -10,9 +13,17 @@ want a library sorted the way they mix. The audio is downloaded and analyzed on
 your own machine, with no account to sign up for.
 
 <p align="center">
-  <img src="docs/images/cratemind.png" width="760"
-       alt="cratemind downloading a Spotify playlist and sorting it into folders by genre and tempo, with BPM and Camelot key shown per track">
+  <img src="docs/images/cratemind-demo.gif" width="760"
+       alt="cratemind taking a Spotify playlist and sorting it into a crate: the track table shows BPM, genre, and Camelot key per track, with a tempo histogram and crate summary">
 </p>
+
+## Contents
+
+- [What it does](#what-it-does) · [What you get](#what-you-get)
+- [Install](#install-one-command) · [Manual setup](#manual-setup) · [Run it](#run-it) · [Using it](#using-it)
+- [Genre detection](#genre-detection-audio-model) · [Sharing a crate](#sharing-a-crate) · [Audio quality](#audio-quality)
+- [Troubleshooting](#troubleshooting) · [Roadmap](#roadmap) · [Contributing](#contributing)
+- [Reporting bugs](#reporting-bugs) · [One-click app](#a-one-click-app-coming-soon) · [License](#license-and-disclaimer)
 
 ## What it does
 
@@ -244,60 +255,28 @@ MP3, or M4A). True lossless from Tidal/Qobuz is paused for now; see the
 
 ## Roadmap
 
-- **True lossless downloads (Tidal/Qobuz FLAC).** This used
-  [SpotiFLAC](https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version)'s free,
-  no-account providers, reverse-engineered mirrors that go down for hours at a
-  time. The integration and an automatic fallback to spotdl are already built;
-  it's disabled by default and explored on the `experiment/spotiflac-lossless`
-  branch. It'll come back on once it's dependable.
+See [docs/ROADMAP.md](docs/ROADMAP.md) for what's done, in progress, and planned.
+
+One near-term item worth calling out: **true lossless downloads (Tidal/Qobuz
+FLAC)**. This used
+[SpotiFLAC](https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version)'s free,
+no-account providers, reverse-engineered mirrors that go down for hours at a
+time. The integration and an automatic fallback to spotdl are already built;
+it's disabled by default and explored on the `experiment/spotiflac-lossless`
+branch. It'll come back on once it's dependable.
 
 ---
 
 ## Contributing
 
-Pull requests are welcome. To get set up:
+Pull requests are welcome. The quick version: `uv sync --extra dev`, make your
+change with a test, then `uv run pytest && uv run ruff check src tests` before you
+open a PR. Commits use [Conventional Commits](https://www.conventionalcommits.org/)
+(`feat: …`, `fix: …`, `docs: …`) since releases are generated from them.
 
-1. Fork and clone the repo.
-2. Install everything, including the test tools:
-   ```
-   uv sync --extra dev
-   ```
-   `./setup.sh` (or `./setup.ps1`) sets up the full toolchain — spotdl, ffmpeg,
-   and the app — from your clone, if you want the external CLIs too.
-3. Make your change. Keep modules small and add a test for any new behavior.
-4. Run the tests and linter; both should pass before you open a PR (CI runs them too):
-   ```
-   uv run pytest
-   uv run ruff check src tests
-   ```
-5. Open a pull request that says what changed and why.
-
-Use [Conventional Commits](https://www.conventionalcommits.org/) for commit
-messages (`feat: …`, `fix: …`, `docs: …`) — releases are generated from them
-(see [Releasing](#releasing)). Keep commits focused. For anything large, open an
-issue first so we can talk it through before you spend time on it.
-
-### Releasing
-
-Releases are automated with
-[release-please](https://github.com/googleapis/release-please). You don't tag or
-edit the version by hand:
-
-1. Merge your `feat:` / `fix:` work into `main`.
-2. release-please opens (or updates) a **"chore(main): release X.Y.Z"** pull
-   request that bumps the version in `pyproject.toml` and `__init__.py` and
-   writes `CHANGELOG.md` from the commits since the last release.
-3. When you're ready to ship, **merge that release PR**. release-please then
-   tags `vX.Y.Z` and publishes a GitHub Release with the changelog. `cratemind
-   update` and the installer reinstall from that new tag.
-
-Version bumps follow the commit types: `fix:` → patch, `feat:` → minor,
-`feat!:` / `BREAKING CHANGE:` → major. Several unreleased commits collapse into a
-single release PR, so the version reflects the whole batch.
-
-> One-time repo setting (already enabled): Settings → Actions → General →
-> "Allow GitHub Actions to create and approve pull requests", which release-please
-> needs to open its release PR.
+Good first issues: add a genre alias pack or a new folder-template token. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the full setup, conventions, and release flow,
+and the [roadmap](docs/ROADMAP.md) for what's planned.
 
 ---
 
