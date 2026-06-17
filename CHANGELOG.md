@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/Serendeep/cratemind/compare/v0.2.0...v0.3.0) (2026-06-17)
+
+
+### Features
+
+* add genre alias editor with /settings page ([#5](https://github.com/Serendeep/cratemind/issues/5)) ([a622c9a](https://github.com/Serendeep/cratemind/commit/a622c9a7fa5841c0bfa79f4792c57a3856a9b277))
+* one-line installer and global cratemind command via uv tool ([a3fa319](https://github.com/Serendeep/cratemind/commit/a3fa31909ea9807965197f1b2d8001aa2da3314c))
+
+
+### Documentation
+
+* document the release-please release flow ([b4106aa](https://github.com/Serendeep/cratemind/commit/b4106aa53467e2b81afff209f1d20c7f3b406511))
+* note the dev hooks bootstrap in contributor guide ([c4278ae](https://github.com/Serendeep/cratemind/commit/c4278aec9645b3d81a08ed5c12374db4d55addf9))
+
 ## [0.2.0](https://github.com/Serendeep/cratemind/compare/v0.1.0...v0.2.0) (2026-06-16)
 
 
