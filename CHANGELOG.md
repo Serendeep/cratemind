@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/Serendeep/cratemind/compare/v0.4.0...v0.4.1) (2026-06-17)
+
+
+### Documentation
+
+* add roadmap and community guides, refresh readme ([748007a](https://github.com/Serendeep/cratemind/commit/748007a5cb71189677829fa8791eac075fb7835d))
+
 ## [0.4.0](https://github.com/Serendeep/cratemind/compare/v0.3.0...v0.4.0) (2026-06-17)
 
 
