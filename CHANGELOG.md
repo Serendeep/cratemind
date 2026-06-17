@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/Serendeep/cratemind/compare/v0.3.0...v0.4.0) (2026-06-17)
+
+
+### Features
+
+* show playlist name instead of url in the crate header ([bd1f714](https://github.com/Serendeep/cratemind/commit/bd1f714f18f20374a83ea20ffd4ac5a79e563a4c))
+
+
+### Bug Fixes
+
+* request only the logits onnx output to silence shape warnings ([e9eee1e](https://github.com/Serendeep/cratemind/commit/e9eee1ec8a24edcc81533e15f4e5e767832be4ea))
+
 ## [0.3.0](https://github.com/Serendeep/cratemind/compare/v0.2.0...v0.3.0) (2026-06-17)
 
 
