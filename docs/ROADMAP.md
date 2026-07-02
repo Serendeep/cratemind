@@ -20,7 +20,7 @@ source; the only planned paid thing is an optional one-click desktop app (same f
 ### Next
 - [ ] Auto-resolve half/double BPM (174, not 87) and keep a crate tempo-consistent
 - [ ] Auto energy score (1–10) with an `{energy}` template token
-- [ ] Wider subgenre coverage + per-track confidence + shareable alias packs
+- [ ] Wider subgenre coverage + shareable alias packs
 - [ ] Published genre/key accuracy benchmark vs other tools
 
 ### Later

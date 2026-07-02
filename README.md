@@ -213,7 +213,7 @@ to `house` so they don't split into separate folders. A handful of aliases
 Re-running a playlist is cheap: each track downloads into a per-run staging
 folder inside your output folder (`.staging/`) and is moved into its genre
 folder from there, so a re-run skips everything that's already sorted and only
-fetches what's new.
+adds what's new.
 
 ---
 
