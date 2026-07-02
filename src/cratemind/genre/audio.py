@@ -171,8 +171,12 @@ def _clean_label(raw: str) -> str:
     return raw.split("---")[-1].strip()
 
 
-def lookup_audio_genre(path: Path) -> str | None:
-    """Predict a raw sub-genre label (e.g. "Hard Techno"), or None if unavailable/unsure."""
+def lookup_audio_genre(path: Path) -> tuple[str, float] | None:
+    """Predict (raw sub-genre label, confidence), or None if unavailable/unsure.
+
+    Confidence is the winning class's mean probability — the same number the
+    _MIN_CONFIDENCE floor gates on, surfaced so the UI can show it per track.
+    """
     if not is_available():
         return None
     try:
@@ -182,6 +186,6 @@ def lookup_audio_genre(path: Path) -> str | None:
         best = int(scores.argmax())
         if scores[best] < _MIN_CONFIDENCE:
             return None
-        return _clean_label(_labels()[best])
+        return _clean_label(_labels()[best]), float(scores[best])
     except Exception:
         return None

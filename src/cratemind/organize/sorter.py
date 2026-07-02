@@ -71,13 +71,18 @@ def sort_track(
 ) -> Track:
     if track.file_path is None:
         return track.update(status="failed")
-    genre = resolve_genre(
+    genre, audio_score = resolve_genre(
         track,
         audio_genre_lookup=audio_genre_lookup,
         coarse_genre_lookup=coarse_genre_lookup,
         artist_genre_lookup=artist_genre_lookup,
         aliases=settings.aliases or None,
     )
+    # A fresh model score wins; otherwise keep whatever the track already
+    # carried (a previewed re-sort resolves from the stored genre, and
+    # recomputing would blank the confidence the model produced on first pass).
+    confidence = audio_score if audio_score is not None else track.genre_confidence
+    track = track.update(genre_confidence=confidence)
     folder = destination_dir(track, settings, genre)
     # Defense in depth: a template/genre must never escape the output root.
     root = settings.output_dir.resolve()

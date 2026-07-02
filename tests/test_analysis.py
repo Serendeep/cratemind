@@ -26,18 +26,19 @@ def test_analyze_without_file_marks_failed():
 
 
 def test_resolve_genre_prefers_tag():
-    assert resolve_genre(_track(genre="Drum & Bass")) == "drum and bass"
+    assert resolve_genre(_track(genre="Drum & Bass")) == ("drum and bass", None)
 
 
 def test_resolve_genre_falls_back_to_artist_lookup():
     track = _track(genre=None, artist="Kavinsky")
-    assert resolve_genre(track, artist_genre_lookup=lambda _a: "Synthwave") == "synthwave"
+    genre, _ = resolve_genre(track, artist_genre_lookup=lambda _a: "Synthwave")
+    assert genre == "synthwave"
 
 
 def test_resolve_genre_prefers_audio_over_coarse_and_artist():
     # Audio gives the specific sub-genre; it must win over the coarse Deezer net.
     track = _track(genre=None, artist="T78", file_path=Path("/x.flac"))
-    genre = resolve_genre(
+    genre, _ = resolve_genre(
         track,
         audio_genre_lookup=lambda _p: "Hard Techno",
         coarse_genre_lookup=lambda _a, _t: "electronic",
@@ -45,9 +46,26 @@ def test_resolve_genre_prefers_audio_over_coarse_and_artist():
     assert genre == "hard techno"
 
 
+def test_resolve_genre_carries_the_audio_models_confidence():
+    track = _track(genre=None, artist="T78", file_path=Path("/x.flac"))
+    genre, confidence = resolve_genre(
+        track, audio_genre_lookup=lambda _p: ("Hard Techno", 0.83)
+    )
+    assert (genre, confidence) == ("hard techno", 0.83)
+
+
+def test_resolve_genre_confidence_is_none_for_non_audio_sources():
+    tagged, conf = resolve_genre(_track(genre="techno"))
+    assert tagged == "techno" and conf is None
+    _, coarse_conf = resolve_genre(
+        _track(genre=None), coarse_genre_lookup=lambda _a, _t: "electronic"
+    )
+    assert coarse_conf is None
+
+
 def test_resolve_genre_uses_coarse_when_audio_blank():
     track = _track(genre=None, artist="T78", file_path=Path("/x.flac"))
-    genre = resolve_genre(
+    genre, _ = resolve_genre(
         track,
         audio_genre_lookup=lambda _p: None,
         coarse_genre_lookup=lambda _a, _t: "electronic",
@@ -57,8 +75,8 @@ def test_resolve_genre_uses_coarse_when_audio_blank():
 
 def test_resolve_genre_falls_back_to_artist_name_when_nothing_found():
     # User decision: group by artist instead of dumping into `unsorted`.
-    assert resolve_genre(_track(genre=None, artist="T78")) == "T78"
+    assert resolve_genre(_track(genre=None, artist="T78")) == ("T78", None)
 
 
 def test_resolve_genre_is_none_only_without_artist():
-    assert resolve_genre(_track(genre=None, artist="")) is None
+    assert resolve_genre(_track(genre=None, artist="")) == (None, None)
