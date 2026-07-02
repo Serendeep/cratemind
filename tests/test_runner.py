@@ -1,14 +1,27 @@
+from pathlib import Path
+
 import pytest
 
 from cratemind.config import Settings
 from cratemind.download.backends import BackendUnavailable
 from cratemind.download.base import Track
-from cratemind.runner import run_crate
+from cratemind.runner import apply_crate, run_crate
 from cratemind.store.db import CrateStore
 
 
 def _track(track_id: str) -> Track:
     return Track(spotify_id=track_id, title=f"T{track_id}", artist="A")
+
+
+def _previewed(track_id: str, tmp_path: Path, genre: str = "techno") -> Track:
+    src = tmp_path / f"{track_id}.flac"
+    src.write_bytes(b"\x00")
+    return Track(
+        spotify_id=track_id, title=f"T{track_id}", artist="A", genre=genre,
+        bpm=130, bpm_bucket="128-135", file_path=src,
+        proposed_path=tmp_path / "out" / genre / "128-135" / f"{track_id}.flac",
+        status="previewed",
+    )
 
 
 def test_run_processes_every_track_and_records_state():
@@ -149,3 +162,106 @@ def test_run_raises_when_fetch_empty_and_store_empty():
 
     with pytest.raises(BackendUnavailable):
         run_crate("u", Settings(), store, fetch=fetch, process=lambda t, _s: t)
+
+
+def test_previewed_resume_resorts_without_reanalysis(tmp_path):
+    # A stored preview re-runs cheap: no process() call, but a newly added
+    # alias re-applies and the proposed destination recomputes.
+    store = CrateStore()
+    store.upsert_track("u", _previewed("1", tmp_path))
+    store.set_alias("techno", "warehouse")
+    analyzed: list[str] = []
+
+    def fetch(_url, _settings):
+        return "spotdl", [_previewed("1", tmp_path)]  # staging re-collected
+
+    _n, results = run_crate(
+        "u",
+        Settings(output_dir=tmp_path / "out", dry_run=True),
+        store,
+        fetch=fetch,
+        process=lambda t, _s: analyzed.append(t.spotify_id) or t,
+    )
+    assert analyzed == []  # no librosa re-run
+    (track,) = results
+    assert track.status == "previewed"
+    assert track.genre == "warehouse"
+    assert "warehouse" in track.proposed_path.parts
+    assert track.file_path.exists()  # still nothing moved
+
+
+def test_previewed_resume_keeps_sorted_rows_untouched(tmp_path):
+    # Regression: mixing previewed rows into a run must not disturb the
+    # wholesale skip for sorted ones.
+    store = CrateStore()
+    store.upsert_track("u", _track("1").update(status="sorted", genre="house"))
+    store.upsert_track("u", _previewed("2", tmp_path))
+    processed: list[str] = []
+
+    _n, results = run_crate(
+        "u",
+        Settings(output_dir=tmp_path / "out", dry_run=True),
+        store,
+        fetch=lambda _u, _s: ("spotdl", []),
+        process=lambda t, _s: processed.append(t.spotify_id) or t,
+    )
+    assert processed == []
+    by_id = {t.spotify_id: t for t in results}
+    assert by_id["1"].status == "sorted" and by_id["1"].genre == "house"
+    assert by_id["2"].status == "previewed"
+
+
+def test_rerun_without_dry_run_applies_previewed_tracks(tmp_path):
+    # Re-running with the preview box unticked performs the moves via the
+    # same cheap re-sort path — no re-analysis.
+    store = CrateStore()
+    store.upsert_track("u", _previewed("1", tmp_path))
+
+    _n, results = run_crate(
+        "u",
+        Settings(output_dir=tmp_path / "out"),
+        store,
+        fetch=lambda _u, _s: ("spotdl", []),
+        process=lambda t, _s: t,
+    )
+    (track,) = results
+    assert track.status == "sorted"
+    assert track.file_path.exists()
+    assert track.file_path.is_relative_to(tmp_path / "out")
+    assert store.status_of("u", "1") == "sorted"
+
+
+def test_apply_crate_moves_previewed_and_skips_the_rest(tmp_path):
+    store = CrateStore()
+    store.upsert_track("u", _track("1").update(status="sorted"))
+    store.upsert_track("u", _previewed("2", tmp_path))
+    applied: list[str] = []
+
+    def fake_apply(track, _settings):
+        applied.append(track.spotify_id)
+        return track.update(status="sorted", file_path=track.proposed_path, proposed_path=None)
+
+    emitted: list[str] = []
+    name, results = apply_crate(
+        "u", Settings(), store, apply=fake_apply,
+        on_update=lambda t: emitted.append(t.spotify_id),
+    )
+    assert name == "apply"
+    assert applied == ["2"]  # only the previewed row moved
+    assert sorted(emitted) == ["1", "2"]  # but the whole crate re-emitted
+    assert store.status_of("u", "2") == "sorted"
+
+
+def test_apply_crate_is_idempotent_on_a_second_run(tmp_path):
+    store = CrateStore()
+    store.upsert_track("u", _previewed("1", tmp_path))
+    applied: list[str] = []
+
+    def fake_apply(track, _settings):
+        applied.append(track.spotify_id)
+        return track.update(status="sorted", proposed_path=None)
+
+    apply_crate("u", Settings(), store, apply=fake_apply)
+    apply_crate("u", Settings(), store, apply=fake_apply)  # double click
+    assert applied == ["1"]  # second pass applied nothing
+    assert store.status_of("u", "1") == "sorted"  # and never regressed to failed
