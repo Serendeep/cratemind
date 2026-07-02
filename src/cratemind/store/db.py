@@ -22,12 +22,14 @@ CREATE TABLE IF NOT EXISTS tracks (
     title       TEXT,
     artist      TEXT,
     genre       TEXT,
+    genre_confidence REAL,
     bpm         INTEGER,
     bpm_bucket  TEXT,
     key         TEXT,
     source      TEXT,
     lossless    INTEGER NOT NULL DEFAULT 0,
     file_path   TEXT,
+    proposed_path TEXT,
     status      TEXT NOT NULL DEFAULT 'queued',
     PRIMARY KEY (run_url, spotify_id)
 );
@@ -69,14 +71,25 @@ def _to_track(row: sqlite3.Row) -> Track:
         title=row["title"],
         artist=row["artist"],
         genre=row["genre"],
+        genre_confidence=row["genre_confidence"],
         bpm=row["bpm"],
         bpm_bucket=row["bpm_bucket"],
         key=row["key"],
         source=row["source"],
         lossless=bool(row["lossless"]),
         file_path=Path(row["file_path"]) if row["file_path"] else None,
+        proposed_path=Path(row["proposed_path"]) if row["proposed_path"] else None,
         status=row["status"],
     )
+
+
+# Columns added after 1.0-era installs. CREATE TABLE IF NOT EXISTS never alters
+# an existing table and the user-data DB survives updates, so each new column
+# needs a guarded ALTER TABLE on open.
+_MIGRATIONS = {
+    "genre_confidence": "ALTER TABLE tracks ADD COLUMN genre_confidence REAL",
+    "proposed_path": "ALTER TABLE tracks ADD COLUMN proposed_path TEXT",
+}
 
 
 class CrateStore:
@@ -84,6 +97,14 @@ class CrateStore:
         self.conn = sqlite3.connect(str(path))
         self.conn.row_factory = sqlite3.Row
         _ = self.conn.executescript(_SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        have = {row["name"] for row in self.conn.execute("PRAGMA table_info(tracks)")}
+        for column, ddl in _MIGRATIONS.items():
+            if column not in have:
+                _ = self.conn.execute(ddl)
+        self.conn.commit()
 
     def close(self) -> None:
         self.conn.close()
@@ -92,14 +113,17 @@ class CrateStore:
         _ = self.conn.execute(
             """
             INSERT INTO tracks
-                (run_url, spotify_id, title, artist, genre, bpm, bpm_bucket,
-                 key, source, lossless, file_path, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (run_url, spotify_id, title, artist, genre, genre_confidence,
+                 bpm, bpm_bucket, key, source, lossless, file_path,
+                 proposed_path, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_url, spotify_id) DO UPDATE SET
                 title=excluded.title, artist=excluded.artist, genre=excluded.genre,
+                genre_confidence=excluded.genre_confidence,
                 bpm=excluded.bpm, bpm_bucket=excluded.bpm_bucket, key=excluded.key,
                 source=excluded.source, lossless=excluded.lossless,
-                file_path=excluded.file_path, status=excluded.status
+                file_path=excluded.file_path,
+                proposed_path=excluded.proposed_path, status=excluded.status
             """,
             (
                 run_url,
@@ -107,12 +131,14 @@ class CrateStore:
                 track.title,
                 track.artist,
                 track.genre,
+                track.genre_confidence,
                 track.bpm,
                 track.bpm_bucket,
                 track.key,
                 track.source,
                 int(track.lossless),
                 str(track.file_path) if track.file_path else None,
+                str(track.proposed_path) if track.proposed_path else None,
                 track.status,
             ),
         )

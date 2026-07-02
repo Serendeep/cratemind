@@ -134,3 +134,63 @@ def test_persists_to_file(tmp_path):
     reopened = CrateStore(db)
     assert reopened.is_done("u", "1")
     reopened.close()
+
+
+def test_preview_fields_roundtrip():
+    store = CrateStore()
+    store.upsert_track(
+        "u",
+        _track(
+            genre="hard techno",
+            genre_confidence=0.87,
+            proposed_path=Path("/m/hard techno/140-147/a.flac"),
+            status="previewed",
+        ),
+    )
+    (track,) = store.tracks("u")
+    assert track.genre_confidence == 0.87
+    assert track.proposed_path == Path("/m/hard techno/140-147/a.flac")
+    assert track.status == "previewed"
+    store.close()
+
+
+def test_preview_fields_default_none():
+    store = CrateStore()
+    store.upsert_track("u", _track(status="sorted"))
+    (track,) = store.tracks("u")
+    assert track.genre_confidence is None
+    assert track.proposed_path is None
+    store.close()
+
+
+def test_migrates_old_schema_db_keeping_rows(tmp_path):
+    # A pre-preview install: tracks table without the new columns, with data.
+    import sqlite3
+
+    db = tmp_path / "cratemind.db"
+    conn = sqlite3.connect(db)
+    conn.executescript(
+        """
+        CREATE TABLE tracks (
+            run_url TEXT NOT NULL, spotify_id TEXT NOT NULL, title TEXT,
+            artist TEXT, genre TEXT, bpm INTEGER, bpm_bucket TEXT, key TEXT,
+            source TEXT, lossless INTEGER NOT NULL DEFAULT 0, file_path TEXT,
+            status TEXT NOT NULL DEFAULT 'queued',
+            PRIMARY KEY (run_url, spotify_id)
+        );
+        INSERT INTO tracks (run_url, spotify_id, title, artist, status)
+        VALUES ('u', '1', 'Nightcall', 'Kavinsky', 'sorted');
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    store = CrateStore(db)  # must not raise, must add the new columns
+    (track,) = store.tracks("u")
+    assert track.title == "Nightcall"
+    assert track.status == "sorted"
+    assert track.genre_confidence is None
+    assert track.proposed_path is None
+    store.upsert_track("u", _track(status="previewed", proposed_path=Path("/m/x.mp3")))
+    assert store.status_of("u", "1") == "previewed"
+    store.close()

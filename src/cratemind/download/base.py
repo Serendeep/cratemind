@@ -11,7 +11,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-TrackStatus = str  # queued | downloading | analyzing | sorted | failed
+TrackStatus = str  # queued | downloading | analyzing | previewed | sorted | failed
 
 
 @dataclass(frozen=True)
@@ -20,12 +20,17 @@ class Track:
     title: str
     artist: str
     genre: str | None = None
+    # The audio model's winning-class probability when it chose the genre;
+    # None for tag/alias/Deezer-derived genres (no comparable score).
+    genre_confidence: float | None = None
     bpm: int | None = None
     bpm_bucket: str | None = None
     key: str | None = None  # Camelot code, e.g. "8A"
     source: str | None = None  # "spotiflac" | "spotdl"
     lossless: bool = False
     file_path: Path | None = None
+    # Where a dry-run would move the file; set only while status is "previewed".
+    proposed_path: Path | None = None
     status: TrackStatus = "queued"
 
     def update(self, **changes: object) -> "Track":
