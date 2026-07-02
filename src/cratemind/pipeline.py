@@ -85,13 +85,15 @@ def apply_previewed(
     """
     if track.proposed_path is None or track.file_path is None:
         return track.update(status="failed")
+    if not track.file_path.exists():
+        # Checked before the in-place branch too: a vanished file must never be
+        # recorded "sorted", wherever it was previewed.
+        return track.update(status="failed")
     if track.file_path == track.proposed_path:
         # Previewed in place — nothing to move.
         done = track.update(status="sorted", proposed_path=None)
         _embed_tags(done, settings, tag_writer)
         return done
-    if not track.file_path.exists():
-        return track.update(status="failed")
     dest = place_file(track.file_path, track.proposed_path.parent)
     done = track.update(file_path=dest, proposed_path=None, status="sorted")
     _embed_tags(done, settings, tag_writer)

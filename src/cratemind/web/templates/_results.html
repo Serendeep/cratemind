@@ -46,8 +46,8 @@
       {% elif t.status == "sorted" %}<div class="gen un">unsorted</div>
       {% else %}<div class="gen">—</div>{% endif %}
       {% if show_dest %}
-      {% if t.proposed_path %}<div class="dest" title="{{ t.proposed_path }}">{{ t.proposed_path.parent }}</div>
-      {% elif t.file_path %}<div class="dest done" title="{{ t.file_path }}">{{ t.file_path.parent }}</div>
+      {% if t.proposed_path %}<div class="dest" title="{{ t.proposed_path }}"><bdi>{{ t.proposed_path.parent }}</bdi></div>
+      {% elif t.file_path %}<div class="dest done" title="{{ t.file_path }}"><bdi>{{ t.file_path.parent }}</bdi></div>
       {% else %}<div class="dest">—</div>{% endif %}
       {% elif t.source == "spotiflac" %}<div class="src"><span class="ok">SpotiFLAC</span><small>lossless</small></div>
       {% elif t.source == "spotdl" %}<div class="src"><span class="fb">spotdl</span><small>lossy</small></div>

@@ -23,6 +23,37 @@ def test_lookup_swallows_errors(monkeypatch):
     assert audio.lookup_audio_genre(Path("/x.flac")) is None
 
 
+class _FakeScores:
+    """Just enough of the ndarray surface for lookup_audio_genre."""
+
+    def __init__(self, values):
+        self.values = values
+
+    def argmax(self):
+        return max(range(len(self.values)), key=self.values.__getitem__)
+
+    def __getitem__(self, index):
+        return self.values[index]
+
+
+def test_lookup_returns_label_and_confidence(monkeypatch):
+    # Regression: the success path changed contract from a bare label to
+    # (label, confidence) — resolve_genre unpacks the tuple.
+    monkeypatch.setattr(audio, "is_available", lambda: True)
+    monkeypatch.setattr(audio, "_predict", lambda _p: _FakeScores([0.83, 0.1]))
+    monkeypatch.setattr(
+        audio, "_labels", lambda: ["Electronic---Hard Techno", "Electronic---House"]
+    )
+    assert audio.lookup_audio_genre(Path("/x.flac")) == ("Hard Techno", 0.83)
+
+
+def test_lookup_still_abstains_below_the_confidence_floor(monkeypatch):
+    monkeypatch.setattr(audio, "is_available", lambda: True)
+    monkeypatch.setattr(audio, "_predict", lambda _p: _FakeScores([0.05, 0.03]))
+    monkeypatch.setattr(audio, "_labels", lambda: ["a", "b"])
+    assert audio.lookup_audio_genre(Path("/x.flac")) is None
+
+
 def test_predict_requests_only_the_class_head(monkeypatch):
     """Only the logits output is requested, so onnxruntime doesn't materialize
     the 12 unused per-layer token outputs (each emits a shape-mismatch warning)."""

@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from .. import __version__
 from ..config import DEFAULT_TEMPLATE, Settings
-from ..download.tags import read_art
+from ..download.tags import read_art_cached as read_art
 from ..genre.canonical import DEFAULT_ALIASES, normalize_genre
 from ..manifest import CrateManifest
 from ..prefs import load_settings, save_settings
@@ -175,7 +175,18 @@ def track_art(job_id: str, spotify_id: str) -> Response:
     if art is None:
         return Response(status_code=404)
     data, mime = art
-    return Response(data, media_type=mime, headers={"Cache-Control": "private, max-age=3600"})
+    # The mime string comes from the audio file's own metadata (third-party
+    # downloads) — never let it become text/html or svg on our origin.
+    if mime not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+        mime = "image/jpeg"
+    return Response(
+        data,
+        media_type=mime,
+        headers={
+            "Cache-Control": "private, max-age=3600",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @app.get("/crates", response_class=HTMLResponse)

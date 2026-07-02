@@ -8,6 +8,7 @@ computed later — so this layer only reads metadata.
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
 from pathlib import Path
 
 import mutagen
@@ -74,6 +75,20 @@ def read_art(path: Path) -> tuple[bytes, str] | None:
     except Exception:
         return None
     return None
+
+
+@lru_cache(maxsize=256)
+def _read_art_cached(path_str: str, _mtime_ns: int) -> tuple[bytes, str] | None:
+    return read_art(Path(path_str))
+
+
+def read_art_cached(path: Path) -> tuple[bytes, str] | None:
+    """`read_art` with an mtime-keyed cache — the presence check and the art
+    route both parse the same file per render, so cache one full parse."""
+    try:
+        return _read_art_cached(str(path), path.stat().st_mtime_ns)
+    except OSError:
+        return None
 
 
 def track_from_file(path: Path, *, source: str) -> Track:

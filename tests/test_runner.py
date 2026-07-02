@@ -190,6 +190,24 @@ def test_previewed_resume_resorts_without_reanalysis(tmp_path):
     assert track.file_path.exists()  # still nothing moved
 
 
+def test_previewed_resume_carries_the_model_confidence(tmp_path):
+    # 5A: the model doesn't re-run on a re-preview, so the stored confidence
+    # must survive the re-sort instead of being blanked.
+    store = CrateStore()
+    store.upsert_track("u", _previewed("1", tmp_path).update(genre_confidence=0.83))
+
+    _n, results = run_crate(
+        "u",
+        Settings(output_dir=tmp_path / "out", dry_run=True),
+        store,
+        fetch=lambda _u, _s: ("spotdl", []),
+        process=lambda t, _s: t,
+    )
+    (track,) = results
+    assert track.status == "previewed"
+    assert track.genre_confidence == 0.83
+
+
 def test_previewed_resume_keeps_sorted_rows_untouched(tmp_path):
     # Regression: mixing previewed rows into a run must not disturb the
     # wholesale skip for sorted ones.

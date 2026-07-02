@@ -235,6 +235,31 @@ def test_apply_previewed_missing_source_degrades_to_failed(tmp_path):
     assert done.status == "failed"
 
 
+def test_apply_previewed_in_place_missing_file_fails_not_sorted(tmp_path):
+    # A vanished file must never be recorded "sorted", even when it was
+    # previewed in place (the branch that doesn't move anything).
+    out = tmp_path / "out"
+    dest_dir = out / "house" / "120-127"
+    dest_dir.mkdir(parents=True)
+    src = _make_file(dest_dir, "a.flac")
+    track = Track(
+        spotify_id="1", title="x", artist="y", genre="house",
+        bpm=124, bpm_bucket="120-127", file_path=src,
+    )
+    previewed = sort_track(track, Settings(output_dir=out, dry_run=True))
+    src.unlink()
+    done = apply_previewed(previewed, Settings(output_dir=out), tag_writer=lambda p, **kw: None)
+    assert done.status == "failed"
+
+
+def test_apply_previewed_without_proposed_path_fails_safely(tmp_path):
+    src = _make_file(tmp_path)
+    track = Track(spotify_id="1", title="x", artist="y", status="previewed", file_path=src)
+    done = apply_previewed(track, Settings(output_dir=tmp_path / "out"), tag_writer=lambda p, **kw: None)
+    assert done.status == "failed"
+    assert src.exists()  # nothing moved
+
+
 def test_apply_previewed_in_place_is_a_noop_move(tmp_path):
     out = tmp_path / "out"
     dest_dir = out / "house" / "120-127"

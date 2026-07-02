@@ -308,6 +308,7 @@ def test_sorted_run_keeps_the_source_column_and_no_apply():
     assert ">source<" in text
     assert "Apply — move" not in text
     assert "proposed structure" not in text
+    assert 'class="art"' not in text  # no art anywhere → column absent entirely
 
 
 def test_index_has_the_preview_checkbox():

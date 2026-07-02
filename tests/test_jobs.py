@@ -79,6 +79,46 @@ def test_local_preview_override_is_explicit_only():
     assert captured["dry_run"] is False
 
 
+def test_monitor_counts_only_this_runs_staging(tmp_path, monkeypatch):
+    # Regression: the progress monitor was rescoped from the shared output root
+    # to the run's own staging dir — another run's pending preview (and legacy
+    # root leftovers) must not inflate this run's downloaded count.
+    import time
+
+    from cratemind.download import backends
+
+    settings = Settings(output_dir=tmp_path)
+    url = "https://open.spotify.com/playlist/mine"
+    mine = backends.staging_dir(url, settings)
+    mine.mkdir(parents=True)
+    (mine / "a.mp3").write_bytes(b"\x00")
+    (mine / "b.mp3").write_bytes(b"\x00")
+    other = backends.staging_dir("https://open.spotify.com/playlist/other", settings)
+    other.mkdir(parents=True)
+    (other / "previewed.mp3").write_bytes(b"\x00")
+    (tmp_path / "legacy-root.mp3").write_bytes(b"\x00")
+
+    sampled: list = []
+    real = backends.staging_files
+
+    def spy(directory):
+        result = real(directory)
+        sampled.append(directory)
+        return result
+
+    monkeypatch.setattr(backends, "staging_files", spy)
+
+    def runner(_url, _settings, _store, *, on_update=None):
+        deadline = time.time() + 5
+        while len(sampled) < 2 and time.time() < deadline:  # >=1 full monitor tick
+            time.sleep(0.01)
+        return "spotdl", []
+
+    job = _inline().start(url, settings, runner=runner)
+    assert sampled and all(directory == mine for directory in sampled)
+    assert job.downloaded == 2  # own staging only
+
+
 def test_playlist_urls_keep_the_callers_dry_run():
     captured: dict = {}
     manager = _inline()

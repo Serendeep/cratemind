@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..download.base import Track
-from ..download.tags import read_art
+from ..download.tags import read_art_cached
 
 _STATUS_RANK = {
     "downloading": 0,
@@ -90,7 +90,7 @@ def summarize(tracks: list[Track]) -> dict[str, object]:
 ArtReader = Callable[[Path], "tuple[bytes, str] | None"]
 
 
-def art_ids(tracks: list[Track], *, reader: ArtReader = read_art) -> set[str]:
+def art_ids(tracks: list[Track], *, reader: ArtReader = read_art_cached) -> set[str]:
     """The spotify_ids on this page whose files carry embedded art.
 
     Called only for non-running jobs (the done state doesn't poll), so the
