@@ -14,7 +14,7 @@ source; the only planned paid thing is an optional one-click desktop app (same f
 
 ### Now
 - [ ] Sort music you already own (point at a local folder, skip the download)
-- [ ] Dry-run preview before any files move
+- [x] Dry-run preview before any files move
 - [ ] Honest audio-quality tag (detect real bitrate, flag fake 320k upscales)
 
 ### Next

@@ -34,6 +34,10 @@ your own machine, with no account to sign up for.
   electronic sub-genre (hard techno, tech house, trance) straight off the
   waveform, since underground tracks rarely carry a usable genre tag.
 - **Sorts into folders you template**, like `hard techno/140-147/`.
+- **Preview before anything moves.** Tick *preview first* and cratemind
+  analyzes everything, then shows each track's destination — with album art
+  and the genre model's confidence — plus the resulting folder tree. Nothing
+  moves until you hit **Apply**.
 - **Live progress in the browser**, and reloading the page reconnects to the run.
 - **Resumes instantly**, re-running a playlist skips tracks already sorted.
 - **Share a crate** as a small `crate.json` (the analysis, not the audio) and
@@ -174,6 +178,12 @@ a folder, and hit **Run**.
   `hard techno/140-147/`. You can mix and match these tokens: `{genre}`,
   `{bpm_bucket}`, `{bpm}`, `{key}`, `{artist}`, `{year}`. `{key}` is the Camelot
   code (like `8A`) for harmonic mixing, also shown next to each track's BPM.
+- **Preview first**: analyze the whole playlist and show every track's
+  destination without moving a single file. The preview table shows album art,
+  genre (with the model's confidence), BPM, key, and where each track would
+  land, plus a folder tree of the result. Happy with it? Hit **Apply** to
+  perform exactly the moves shown. Want to tweak an alias or the template
+  first? Re-run and the preview refreshes.
 - **Advanced**: the BPM window (used to correct half- or double-tempo
   mistakes), how wide each tempo band is, and **metadata tags** (below).
 
@@ -200,9 +210,10 @@ fold different names for the same genre into one folder — e.g. map `tech house
 to `house` so they don't split into separate folders. A handful of aliases
 (`dnb` → `drum and bass`, etc.) are built in; your own are applied on top.
 
-Re-running a playlist is cheap: each track is downloaded straight into your output
-folder and moved into its genre folder, so a re-run skips everything that's
-already sorted and only fetches what's new.
+Re-running a playlist is cheap: each track downloads into a per-run staging
+folder inside your output folder (`.staging/`) and is moved into its genre
+folder from there, so a re-run skips everything that's already sorted and only
+fetches what's new.
 
 ---
 
