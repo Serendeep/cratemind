@@ -43,7 +43,7 @@
   <div class="crate">
     <div class="nm">
       <div class="t">{{ run.name }}</div>
-      <div class="meta">{{ run.sorted }} sorted · {{ run.failed }} failed · {{ run.total }} total</div>
+      <div class="meta">{{ run.sorted }} sorted ·{% if run.previewed %} {{ run.previewed }} previewed ·{% endif %} {{ run.failed }} failed · {{ run.total }} total</div>
     </div>
     <a class="btn" href="/crates/{{ run.run_id }}/export">Export</a>
     <form method="post" action="/crates/{{ run.run_id }}/run"><button class="btn" type="submit">Re-run</button></form>

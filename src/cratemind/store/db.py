@@ -61,6 +61,7 @@ class RunSummary:
     name: str
     total: int
     sorted: int
+    previewed: int
     failed: int
     updated_at: str
 
@@ -191,6 +192,7 @@ class CrateStore:
             SELECT r.run_id, r.run_url, r.name, r.updated_at,
                    COUNT(t.spotify_id) AS total,
                    SUM(CASE WHEN t.status='sorted' THEN 1 ELSE 0 END) AS sorted,
+                   SUM(CASE WHEN t.status='previewed' THEN 1 ELSE 0 END) AS previewed,
                    SUM(CASE WHEN t.status='failed' THEN 1 ELSE 0 END) AS failed
             FROM runs r LEFT JOIN tracks t ON t.run_url = r.run_url
             GROUP BY r.run_id
@@ -204,6 +206,7 @@ class CrateStore:
                 name=r["name"] or r["run_url"],
                 total=r["total"] or 0,
                 sorted=r["sorted"] or 0,
+                previewed=r["previewed"] or 0,
                 failed=r["failed"] or 0,
                 updated_at=r["updated_at"],
             )

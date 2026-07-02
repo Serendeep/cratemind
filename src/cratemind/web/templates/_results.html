@@ -13,34 +13,64 @@
     {% endif %}
   </div>
   {% else %}
-  <div class="label">// {{ "running" if job.status == "running" else "crate" }}</div>
+  <div class="label">// {{ "running" if job.status == "running" else ("preview" if summary.previewed else "crate") }}</div>
   <div class="runline">
     <span class="nm2 mono">{{ job.playlist_name or job.playlist_url }}</span>
-    <span class="pr"><b>{{ summary.sorted }}</b> sorted · {{ summary.working }} working · {{ summary.total }} total{% if job.backend %} · {{ job.backend }}{% endif %}</span>
+    <span class="pr"><b>{{ summary.sorted }}</b> sorted ·{% if summary.previewed %} {{ summary.previewed }} previewed ·{% endif %} {{ summary.working }} working · {{ summary.total }} total{% if job.backend %} · {{ job.backend }}{% endif %}</span>
   </div>
   <div class="prog"><i style="width:{{ summary.progress_pct }}%"></i></div>
-  <div class="tbl">
+  {% if summary.previewed and job.status != "running" %}
+  <div class="applyrow">
+    <button class="btn go sm" hx-post="/runs/{{ job.id }}/apply" hx-target="#run" hx-swap="outerHTML" hx-disabled-elt="this">Apply — move {{ summary.previewed }} track{{ '' if summary.previewed == 1 else 's' }}</button>
+    <span class="hint">nothing has moved yet; Apply performs exactly the moves shown below</span>
+  </div>
+  {% endif %}
+  {% set show_art = art_ids | length > 0 %}
+  {% set show_dest = summary.previewed > 0 %}
+  <div class="tbl{{ ' art' if show_art else '' }}{{ ' prev' if show_dest else '' }}">
     <div class="head">
-      <div>status</div><div>track</div><div style="text-align:right">bpm</div><div>genre</div><div style="text-align:right">source</div>
+      {% if show_art %}<div></div>{% endif %}<div>status</div><div>track</div><div style="text-align:right">bpm</div><div>genre</div>{% if show_dest %}<div>destination</div>{% else %}<div style="text-align:right">source</div>{% endif %}
     </div>
     {% for t in page.tracks %}
-    {% set cls = "sorted" if t.status == "sorted" else ("failed" if t.status == "failed" else ("queued" if t.status == "queued" else "work")) %}
+    {% set cls = "sorted" if t.status == "sorted" else ("failed" if t.status == "failed" else ("queued" if t.status == "queued" else ("prev" if t.status == "previewed" else "work"))) %}
     <div class="tr{{ ' queued' if t.status == 'queued' else '' }}">
+      {% if show_art %}
+      {% if t.spotify_id in art_ids %}<div class="art"><img src="/runs/{{ job.id }}/art/{{ t.spotify_id }}" alt="" loading="lazy"></div>
+      {% else %}<div class="art"></div>{% endif %}
+      {% endif %}
       <div class="st {{ cls }}"><span class="d"></span>{{ t.status }}</div>
       <div class="nm"><div class="t">{{ t.title }}</div><div class="a">{{ t.artist }}</div></div>
       {% if t.bpm %}<div class="bpm"><b>{{ t.bpm }}</b><small>{{ t.bpm_bucket }}{% if t.key %} · {{ t.key }}{% endif %}</small></div>
       {% else %}<div class="bpm none"><b>—</b><small>bpm</small></div>{% endif %}
-      {% if t.genre %}<div class="gen">{{ t.genre }}</div>
+      {% if t.genre %}<div class="gen">{{ t.genre }}{% if t.genre_confidence %}<small class="conf">{{ (t.genre_confidence * 100) | round | int }}%</small>{% endif %}</div>
       {% elif t.status == "sorted" %}<div class="gen un">unsorted</div>
       {% else %}<div class="gen">—</div>{% endif %}
-      {% if t.source == "spotiflac" %}<div class="src"><span class="ok">SpotiFLAC</span><small>lossless</small></div>
+      {% if show_dest %}
+      {% if t.proposed_path %}<div class="dest" title="{{ t.proposed_path }}">{{ t.proposed_path.parent }}</div>
+      {% elif t.file_path %}<div class="dest done" title="{{ t.file_path }}">{{ t.file_path.parent }}</div>
+      {% else %}<div class="dest">—</div>{% endif %}
+      {% elif t.source == "spotiflac" %}<div class="src"><span class="ok">SpotiFLAC</span><small>lossless</small></div>
       {% elif t.source == "spotdl" %}<div class="src"><span class="fb">spotdl</span><small>lossy</small></div>
       {% else %}<div class="src"><small>—</small></div>{% endif %}
-      {% set stage = 100 if t.status in ('sorted', 'failed') else (66 if t.status == 'analyzing' else (33 if t.status == 'downloading' else 0)) %}
+      {% set stage = 100 if t.status in ('sorted', 'failed', 'previewed') else (66 if t.status == 'analyzing' else (33 if t.status == 'downloading' else 0)) %}
       <div class="trbar {{ 'failed' if t.status == 'failed' else ('work' if t.status in ('downloading', 'analyzing') else '') }}"><i style="width:{{ stage }}%"></i></div>
     </div>
     {% endfor %}
   </div>
+
+  {% if tree %}
+  <div class="label">// proposed structure</div>
+  <div class="treebox">
+    {% for folder, items in tree %}
+    <details class="fold">
+      <summary><span class="mono">{{ folder }}</span><span class="cnt">{{ items | length }} track{{ '' if items | length == 1 else 's' }}</span></summary>
+      <ul>
+        {% for t in items %}<li class="mono">{{ t.artist }} — {{ t.title }}</li>{% endfor %}
+      </ul>
+    </details>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   {% if page.total > 1 %}
   <div class="pager">

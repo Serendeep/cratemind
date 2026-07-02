@@ -11,6 +11,7 @@ import threading
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from ..config import Settings
 from ..download.base import Track
@@ -41,6 +42,7 @@ class Job:
     backend: str | None = None
     downloaded: int = 0  # new files downloaded this run, for live progress feedback
     total_expected: int = 0  # playlist size from spotdl's tracklist (0 = unknown)
+    output_dir: Path | None = None  # the run's output root, for relative display
     tracks: list[Track] = field(default_factory=list)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -67,6 +69,7 @@ class JobManager:
         runner: Runner = run_crate,
         runner_kwargs: dict[str, object] | None = None,
         allow_move_local: bool = False,
+        monitor: bool = True,
     ) -> Job:
         # Safety seam: local sources always preview unless the caller explicitly
         # allowed moving (the run form does, only when the user unticks the
@@ -74,7 +77,9 @@ class JobManager:
         # every entry point inherits it, including the crates-list re-run.
         if playlist_url.startswith("local:") and not allow_move_local and not settings.dry_run:
             settings = settings.with_(dry_run=True)
-        job = Job(id=uuid.uuid4().hex[:12], playlist_url=playlist_url)
+        job = Job(
+            id=uuid.uuid4().hex[:12], playlist_url=playlist_url, output_dir=settings.output_dir
+        )
         self._jobs[job.id] = job
 
         def on_update(track: Track) -> None:
@@ -91,7 +96,7 @@ class JobManager:
             # download progress denominator is "new this run" = playlist - sorted.
             prior_sorted = sum(1 for t in store.tracks(playlist_url) if t.status == "sorted")
 
-            def monitor() -> None:
+            def monitor_loop() -> None:
                 # Count this run's unsorted downloads so the UI shows live
                 # progress. Scoped to the run's own staging dir — the shared
                 # output root may hold OTHER runs' previewed files. The total
@@ -111,9 +116,10 @@ class JobManager:
                             job.total_expected = max(raw_total - prior_sorted, 0)
                     stop.wait(2)
 
-            # A local source downloads nothing — the bar would be meaningless.
-            if not playlist_url.startswith("local:"):
-                threading.Thread(target=monitor, daemon=True).start()
+            # No bar for local sources (nothing downloads) or when the caller
+            # opted out (Apply jobs move files, they don't download).
+            if monitor and not playlist_url.startswith("local:"):
+                threading.Thread(target=monitor_loop, daemon=True).start()
             try:
                 backend, _ = runner(
                     playlist_url, settings, store, on_update=on_update, **(runner_kwargs or {})

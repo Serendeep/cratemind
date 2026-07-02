@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from ..download.base import Track
+from ..download.tags import read_art
 
-_STATUS_RANK = {"downloading": 0, "analyzing": 1, "queued": 2, "failed": 3, "sorted": 4}
+_STATUS_RANK = {
+    "downloading": 0,
+    "analyzing": 1,
+    "queued": 2,
+    "previewed": 3,
+    "failed": 4,
+    "sorted": 5,
+}
 
 PAGE_SIZE = 15
 
@@ -52,6 +62,7 @@ def summarize(tracks: list[Track]) -> dict[str, object]:
     return {
         "total": total,
         "sorted": status.get("sorted", 0),
+        "previewed": status.get("previewed", 0),
         "working": status.get("downloading", 0) + status.get("analyzing", 0),
         "queued": status.get("queued", 0),
         "failed": status.get("failed", 0),
@@ -65,6 +76,50 @@ def summarize(tracks: list[Track]) -> dict[str, object]:
         # spotdl-only runs are never lossless, so the stat would read a flat 0%.
         # Show it only when a lossless backend (SpotiFLAC) actually delivered.
         "has_lossless": lossless > 0,
-        "progress_pct": round(100 * status.get("sorted", 0) / total) if total else 0,
+        # A previewed track's analysis is done — it counts as progress. With
+        # zero previewed tracks this reduces to the old sorted-only number.
+        "progress_pct": (
+            round(100 * (status.get("sorted", 0) + status.get("previewed", 0)) / total)
+            if total
+            else 0
+        ),
         "bins": [(label, count, round(100 * count / bin_max)) for label, count in bin_rows],
     }
+
+
+ArtReader = Callable[[Path], "tuple[bytes, str] | None"]
+
+
+def art_ids(tracks: list[Track], *, reader: ArtReader = read_art) -> set[str]:
+    """The spotify_ids on this page whose files carry embedded art.
+
+    Called only for non-running jobs (the done state doesn't poll), so the
+    per-file reads happen once per page render, not every two seconds.
+    """
+    return {
+        t.spotify_id
+        for t in tracks
+        if t.file_path is not None and reader(t.file_path) is not None
+    }
+
+
+def folder_tree(tracks: list[Track], root: Path | None = None) -> list[tuple[str, list[Track]]]:
+    """Previewed tracks grouped by proposed folder, for the structure preview.
+
+    Labels are relative to the run's output root when known, so the tree reads
+    as `hard techno/140-147`, not an absolute path per row.
+    """
+    groups: dict[Path, list[Track]] = {}
+    for track in tracks:
+        if track.status == "previewed" and track.proposed_path is not None:
+            groups.setdefault(track.proposed_path.parent, []).append(track)
+    tree: list[tuple[str, list[Track]]] = []
+    for folder in sorted(groups):
+        label = str(folder)
+        if root is not None:
+            try:
+                label = str(folder.relative_to(root))
+            except ValueError:
+                pass  # previewed against a different root — show it absolute
+        tree.append((label, sorted(groups[folder], key=lambda t: (t.artist or "", t.title or ""))))
+    return tree

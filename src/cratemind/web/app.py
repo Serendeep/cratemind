@@ -12,12 +12,14 @@ from fastapi.templating import Jinja2Templates
 
 from .. import __version__
 from ..config import DEFAULT_TEMPLATE, Settings
+from ..download.tags import read_art
 from ..genre.canonical import DEFAULT_ALIASES, normalize_genre
 from ..manifest import CrateManifest
 from ..prefs import load_settings, save_settings
+from ..runner import apply_crate
 from ..share import share_crate
 from .jobs import JobManager, open_store
-from .view import paginate, summarize
+from .view import art_ids, folder_tree, paginate, summarize
 
 _BASE = Path(__file__).parent
 templates = Jinja2Templates(directory=str(_BASE / "templates"))
@@ -60,13 +62,19 @@ def index(request: Request) -> HTMLResponse:
 def _results(request: Request, job, page: int = 1) -> HTMLResponse:
     with job.lock:  # job.tracks is replaced wholesale by the worker thread
         tracks = list(job.tracks)
+    page_slice = paginate(tracks, page)
+    # Art presence is a per-file read — only worth it once the job settles
+    # (the done state doesn't poll, so this runs once per page render).
+    settled = job.status != "running"
     return templates.TemplateResponse(
         request,
         "_results.html",
         {
             "job": job,
-            "page": paginate(tracks, page),
+            "page": page_slice,
             "summary": summarize(tracks),
+            "art_ids": art_ids(page_slice.tracks) if settled else set(),
+            "tree": folder_tree(tracks, job.output_dir) if settled else [],
         },
     )
 
@@ -86,6 +94,7 @@ def start_run(
     # by default (defaults.write_tags), so an untouched form still writes tags.
     write_tags: bool = Form(False),
     key_notation: Literal["camelot", "musical"] = Form("camelot"),
+    dry_run: bool = Form(False),
 ) -> HTMLResponse:
     settings = Settings(
         output_dir=Path(output_dir).expanduser(),
@@ -97,8 +106,9 @@ def start_run(
         online_genre=online_genre,
         write_tags=write_tags,
         key_notation=key_notation,
+        dry_run=dry_run,
     )
-    save_settings(settings)
+    save_settings(settings)  # dry_run is a runtime carrier; save/load drop it
     job = jobs.start(playlist_url, settings)
     _state["active"] = job.id
     return _results(request, job)
@@ -137,6 +147,35 @@ def poll_run(request: Request, job_id: str, page: int = 1) -> HTMLResponse:
     if job is None:
         return HTMLResponse("<div class='err'>run not found</div>", status_code=404)
     return _results(request, job, page)
+
+
+@app.post("/runs/{job_id}/apply", response_class=HTMLResponse)
+def apply_run(request: Request, job_id: str) -> HTMLResponse:
+    """Move a previewed run's files to their proposed destinations, as a job."""
+    job = jobs.get(job_id)
+    if job is None:
+        return HTMLResponse("<div class='err'>run not found</div>", status_code=404)
+    # Settings only feed tag style here — destinations come from proposed_path.
+    new_job = jobs.start(job.playlist_url, load_settings(), runner=apply_crate, monitor=False)
+    _state["active"] = new_job.id
+    return _results(request, new_job)
+
+
+@app.get("/runs/{job_id}/art/{spotify_id}")
+def track_art(job_id: str, spotify_id: str) -> Response:
+    """A track's embedded cover art, straight from the file's own metadata."""
+    job = jobs.get(job_id)
+    if job is None:
+        return Response(status_code=404)
+    with job.lock:
+        track = next((t for t in job.tracks if t.spotify_id == spotify_id), None)
+    if track is None or track.file_path is None:
+        return Response(status_code=404)
+    art = read_art(track.file_path)
+    if art is None:
+        return Response(status_code=404)
+    data, mime = art
+    return Response(data, media_type=mime, headers={"Cache-Control": "private, max-age=3600"})
 
 
 @app.get("/crates", response_class=HTMLResponse)

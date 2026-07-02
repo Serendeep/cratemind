@@ -49,6 +49,33 @@ def read_tags(path: Path) -> dict[str, str | None]:
     }
 
 
+def read_art(path: Path) -> tuple[bytes, str] | None:
+    """Embedded cover art as (bytes, mime), or None. Best-effort — art is a
+    nicety, so any parse problem means "no art", never an error."""
+    try:
+        audio = mutagen.File(str(path))
+        if audio is None:
+            return None
+        tags = audio.tags
+        if tags is not None and hasattr(tags, "getall"):  # ID3 (mp3, some wav/aiff)
+            pics = tags.getall("APIC")
+            if pics:
+                return bytes(pics[0].data), pics[0].mime or "image/jpeg"
+        pictures = getattr(audio, "pictures", None)  # FLAC picture blocks
+        if pictures:
+            return bytes(pictures[0].data), pictures[0].mime or "image/jpeg"
+        if tags is not None:  # MP4 covr atoms
+            covers = tags.get("covr")
+            if covers:
+                from mutagen.mp4 import MP4Cover
+
+                mime = "image/png" if covers[0].imageformat == MP4Cover.FORMAT_PNG else "image/jpeg"
+                return bytes(covers[0]), mime
+    except Exception:
+        return None
+    return None
+
+
 def track_from_file(path: Path, *, source: str) -> Track:
     tags = read_tags(path)
     title = tags.get("title") or path.stem

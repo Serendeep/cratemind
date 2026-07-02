@@ -96,9 +96,10 @@ def test_runs_lists_with_track_counts():
     store.upsert_run("u", name="My Set")
     store.upsert_track("u", _track(spotify_id="1", status="sorted"))
     store.upsert_track("u", _track(spotify_id="2", status="failed"))
+    store.upsert_track("u", _track(spotify_id="3", status="previewed"))
     (run,) = store.runs()
     assert run.name == "My Set"
-    assert (run.total, run.sorted, run.failed) == (2, 1, 1)
+    assert (run.total, run.sorted, run.previewed, run.failed) == (3, 1, 1, 1)
     assert run.run_id == run_id_for("u")
     store.close()
 
