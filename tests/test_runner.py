@@ -249,6 +249,56 @@ def test_rerun_without_dry_run_applies_previewed_tracks(tmp_path):
     assert store.status_of("u", "1") == "sorted"
 
 
+def test_rerun_degrades_vanished_previewed_file_and_continues(tmp_path):
+    # Red team: the re-sort loop is a second apply path. A staged file that
+    # vanished must fail that one track, not abort the whole run mid-loop.
+    store = CrateStore()
+    gone = _previewed("1", tmp_path)
+    gone.file_path.unlink()
+    store.upsert_track("u", gone)
+    store.upsert_track("u", _previewed("2", tmp_path))
+
+    _n, results = run_crate(
+        "u",
+        Settings(output_dir=tmp_path / "out"),  # preview unticked → moves
+        store,
+        fetch=lambda _u, _s: ("spotdl", []),
+        process=lambda t, _s: t,
+    )
+    by_id = {t.spotify_id: t for t in results}
+    assert by_id["1"].status == "failed"
+    assert by_id["2"].status == "sorted"  # the loop carried on
+    assert by_id["2"].file_path.exists()
+
+
+def test_rerun_skips_rows_a_concurrent_apply_already_sorted(tmp_path):
+    # Red team: re-run re-checks live status per track under the lock, so it
+    # can't overwrite a fresh "sorted" row back to "previewed" or double-move.
+    class RacedStore:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def __getattr__(self, name):
+            return getattr(self.inner, name)
+
+        def status_of(self, run_url, spotify_id):
+            return "sorted"  # a concurrent Apply won between load and act
+
+    store = CrateStore()
+    track = _previewed("1", tmp_path)
+    store.upsert_track("u", track)
+
+    _n, results = run_crate(
+        "u",
+        Settings(output_dir=tmp_path / "out"),
+        RacedStore(store),
+        fetch=lambda _u, _s: ("spotdl", []),
+        process=lambda t, _s: t,
+    )
+    assert track.file_path.exists()  # nothing moved by the re-run
+    assert store.status_of("u", "1") == "previewed"  # row not overwritten
+
+
 def test_apply_crate_moves_previewed_and_skips_the_rest(tmp_path):
     store = CrateStore()
     store.upsert_track("u", _track("1").update(status="sorted"))

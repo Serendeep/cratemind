@@ -77,18 +77,19 @@ def read_art(path: Path) -> tuple[bytes, str] | None:
     return None
 
 
-@lru_cache(maxsize=256)
-def _read_art_cached(path_str: str, _mtime_ns: int) -> tuple[bytes, str] | None:
-    return read_art(Path(path_str))
+@lru_cache(maxsize=1024)
+def _has_art_cached(path_str: str, _mtime_ns: int) -> bool:
+    return read_art(Path(path_str)) is not None
 
 
-def read_art_cached(path: Path) -> tuple[bytes, str] | None:
-    """`read_art` with an mtime-keyed cache — the presence check and the art
-    route both parse the same file per render, so cache one full parse."""
+def has_art(path: Path) -> bool:
+    """Presence-only, mtime-keyed cache. Caching booleans instead of the art
+    bytes keeps a long-lived local server from pinning megabytes of covers;
+    the art route re-reads on demand and the browser caches the response."""
     try:
-        return _read_art_cached(str(path), path.stat().st_mtime_ns)
+        return _has_art_cached(str(path), path.stat().st_mtime_ns)
     except OSError:
-        return None
+        return False
 
 
 def track_from_file(path: Path, *, source: str) -> Track:

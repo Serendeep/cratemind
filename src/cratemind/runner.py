@@ -94,17 +94,34 @@ def run_crate(
 
     # Re-sort previewed tracks from their stored analysis — the manifest path:
     # no librosa, aliases re-apply, proposed_path recomputes. With dry_run off
-    # (preview box unticked on the re-run) this same path performs the moves.
+    # (preview box unticked on the re-run) this same path performs the moves,
+    # which makes it a second apply path — so it takes the same per-track
+    # guards as apply_crate: status re-check under the lock (a concurrent
+    # Apply may have just sorted this row) and an existence check (a vanished
+    # file degrades to failed instead of aborting the whole run mid-loop).
     for track in previewed_before:
-        refreshed = place_from_manifest(
-            track,
-            settings,
-            bpm=track.bpm,
-            bpm_bucket=track.bpm_bucket,
-            key=track.key,
-            genre=track.genre,
-        )
-        store.upsert_track(playlist_url, refreshed)
+        with _APPLY_LOCK:
+            if store.status_of(playlist_url, track.spotify_id) != "previewed":
+                current = next(
+                    (t for t in store.tracks(playlist_url) if t.spotify_id == track.spotify_id),
+                    track,
+                )
+                results.append(current)
+                if on_update:
+                    on_update(current)
+                continue
+            if track.file_path is None or not track.file_path.exists():
+                refreshed = track.update(status="failed")
+            else:
+                refreshed = place_from_manifest(
+                    track,
+                    settings,
+                    bpm=track.bpm,
+                    bpm_bucket=track.bpm_bucket,
+                    key=track.key,
+                    genre=track.genre,
+                )
+            store.upsert_track(playlist_url, refreshed)
         if on_update:
             on_update(refreshed)
         results.append(refreshed)

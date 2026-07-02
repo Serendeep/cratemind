@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from .. import __version__
 from ..config import DEFAULT_TEMPLATE, Settings
-from ..download.tags import read_art_cached as read_art
+from ..download.tags import read_art
 from ..genre.canonical import DEFAULT_ALIASES, normalize_genre
 from ..manifest import CrateManifest
 from ..prefs import load_settings, save_settings

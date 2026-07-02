@@ -278,7 +278,7 @@ def test_folder_tree_falls_back_to_absolute_outside_root():
 
 def test_art_ids_uses_the_reader_per_file():
     tracks = [_previewed_track(1), _previewed_track(2)]
-    ids = art_ids(tracks, reader=lambda p: (b"img", "image/jpeg") if "1" in p.name else None)
+    ids = art_ids(tracks, reader=lambda p: "1" in p.name)
     assert ids == {"1"}
 
 

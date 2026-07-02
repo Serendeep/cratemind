@@ -104,7 +104,12 @@ class CrateStore:
         have = {row["name"] for row in self.conn.execute("PRAGMA table_info(tracks)")}
         for column, ddl in _MIGRATIONS.items():
             if column not in have:
-                _ = self.conn.execute(ddl)
+                try:
+                    _ = self.conn.execute(ddl)
+                except sqlite3.OperationalError:
+                    # Another connection (request thread vs job worker) won the
+                    # race between our PRAGMA read and this ALTER — fine.
+                    pass
         self.conn.commit()
 
     def close(self) -> None:

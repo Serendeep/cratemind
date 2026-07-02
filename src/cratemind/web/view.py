@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..download.base import Track
-from ..download.tags import read_art_cached
+from ..download.tags import has_art
 
 _STATUS_RANK = {
     "downloading": 0,
@@ -87,20 +87,16 @@ def summarize(tracks: list[Track]) -> dict[str, object]:
     }
 
 
-ArtReader = Callable[[Path], "tuple[bytes, str] | None"]
+ArtProbe = Callable[[Path], bool]
 
 
-def art_ids(tracks: list[Track], *, reader: ArtReader = read_art_cached) -> set[str]:
+def art_ids(tracks: list[Track], *, reader: ArtProbe = has_art) -> set[str]:
     """The spotify_ids on this page whose files carry embedded art.
 
     Called only for non-running jobs (the done state doesn't poll), so the
     per-file reads happen once per page render, not every two seconds.
     """
-    return {
-        t.spotify_id
-        for t in tracks
-        if t.file_path is not None and reader(t.file_path) is not None
-    }
+    return {t.spotify_id for t in tracks if t.file_path is not None and reader(t.file_path)}
 
 
 def folder_tree(tracks: list[Track], root: Path | None = None) -> list[tuple[str, list[Track]]]:
