@@ -61,6 +61,15 @@ class JobManager:
     def get(self, job_id: str) -> Job | None:
         return self._jobs.get(job_id)
 
+    def _has_previewed(self, playlist_url: str) -> bool:
+        # Short-lived connection on the caller's thread; SQLite connections
+        # must not cross threads, so don't reuse the worker's store.
+        store = self._store_factory()
+        try:
+            return any(t.status == "previewed" for t in store.tracks(playlist_url))
+        finally:
+            store.close()
+
     def start(
         self,
         playlist_url: str,
@@ -71,12 +80,18 @@ class JobManager:
         allow_move_local: bool = False,
         monitor: bool = True,
     ) -> Job:
-        # Safety seam: local sources always preview unless the caller explicitly
-        # allowed moving (the run form does, only when the user unticks the
-        # preview box on that submit). Living here — not in any route — means
-        # every entry point inherits it, including the crates-list re-run.
-        if playlist_url.startswith("local:") and not allow_move_local and not settings.dry_run:
-            settings = settings.with_(dry_run=True)
+        # Safety seam, two rules. Living here — not in any route — means every
+        # entry point inherits them, including the crates-list re-run.
+        # 1. Local sources always preview unless the caller explicitly allowed
+        #    moving (the run form does, only when the user unticks the box).
+        # 2. A crate with pending previewed rows always previews again: an
+        #    absent/unticked checkbox can't distinguish "move my previewed
+        #    files" from "didn't think about it", and re-sorting recomputes
+        #    destinations the user never saw. Apply is the one move mechanism
+        #    (its runner ignores dry_run, so apply jobs are unaffected).
+        if not allow_move_local and not settings.dry_run:
+            if playlist_url.startswith("local:") or self._has_previewed(playlist_url):
+                settings = settings.with_(dry_run=True)
         job = Job(
             id=uuid.uuid4().hex[:12], playlist_url=playlist_url, output_dir=settings.output_dir
         )

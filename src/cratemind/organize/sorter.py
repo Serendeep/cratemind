@@ -94,12 +94,14 @@ def sort_track(
     if folder / track.file_path.name == track.file_path:
         if settings.dry_run:
             return track.update(genre=genre, proposed_path=track.file_path, status="previewed")
-        return track.update(genre=genre, status="sorted")
+        return track.update(genre=genre, proposed_path=None, status="sorted")
     if settings.dry_run:
         # Compute the destination without touching the filesystem. unique_path
         # only reads, so running it here makes the preview show the suffixed
         # name a real sort would pick against files already on disk.
         proposed = unique_path(folder / track.file_path.name)
         return track.update(genre=genre, proposed_path=proposed, status="previewed")
+    # proposed_path cleared: a previewed row sorted through this path must not
+    # keep a stale pending destination that the UI would render as truth.
     dest = place_file(track.file_path, folder)
-    return track.update(genre=genre, file_path=dest, status="sorted")
+    return track.update(genre=genre, file_path=dest, proposed_path=None, status="sorted")

@@ -119,6 +119,20 @@ def test_monitor_counts_only_this_runs_staging(tmp_path, monkeypatch):
     assert job.downloaded == 2  # own staging only
 
 
+def test_crate_with_pending_preview_is_forced_back_into_preview(tmp_path):
+    # Adversarial: the crates-page Re-run carries no "move my files" intent,
+    # and a re-sort recomputes destinations the user never saw — so any crate
+    # holding previewed rows previews again. Apply is the one move mechanism.
+    db = tmp_path / "j.db"
+    seed = CrateStore(db)
+    seed.upsert_track("u", Track(spotify_id="1", title="x", artist="y", status="previewed"))
+    seed.close()
+    captured: dict = {}
+    manager = JobManager(store_factory=lambda: CrateStore(db), spawn=lambda work: work())
+    manager.start("u", Settings(), runner=_capture_dry_run(captured))
+    assert captured["dry_run"] is True
+
+
 def test_playlist_urls_keep_the_callers_dry_run():
     captured: dict = {}
     manager = _inline()

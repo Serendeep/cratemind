@@ -358,6 +358,12 @@ def test_apply_route_unknown_job_is_404():
     assert client.post("/runs/nope/apply").status_code == 404
 
 
+def test_apply_route_rejects_a_still_running_job():
+    job = Job(id="running1", playlist_url="u", status="running")
+    appmod.jobs._jobs["running1"] = job  # type: ignore[attr-defined]
+    assert client.post("/runs/running1/apply").status_code == 409
+
+
 def test_art_route_serves_embedded_art(monkeypatch):
     job = Job(id="art1", playlist_url="u", status="done", tracks=[_previewed_track(1)])
     appmod.jobs._jobs["art1"] = job  # type: ignore[attr-defined]

@@ -155,6 +155,10 @@ def apply_run(request: Request, job_id: str) -> HTMLResponse:
     job = jobs.get(job_id)
     if job is None:
         return HTMLResponse("<div class='err'>run not found</div>", status_code=404)
+    if job.status != "done":
+        # The button is hidden while running, but the route must hold the line
+        # too — applying mid-run would race rows still being previewed.
+        return HTMLResponse("<div class='err'>run is still working</div>", status_code=409)
     # Settings only feed tag style here — destinations come from proposed_path.
     new_job = jobs.start(job.playlist_url, load_settings(), runner=apply_crate, monitor=False)
     _state["active"] = new_job.id

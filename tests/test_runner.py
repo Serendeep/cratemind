@@ -246,6 +246,7 @@ def test_rerun_without_dry_run_applies_previewed_tracks(tmp_path):
     assert track.status == "sorted"
     assert track.file_path.exists()
     assert track.file_path.is_relative_to(tmp_path / "out")
+    assert track.proposed_path is None  # no stale pending destination survives
     assert store.status_of("u", "1") == "sorted"
 
 
@@ -297,6 +298,35 @@ def test_rerun_skips_rows_a_concurrent_apply_already_sorted(tmp_path):
     )
     assert track.file_path.exists()  # nothing moved by the re-run
     assert store.status_of("u", "1") == "previewed"  # row not overwritten
+
+
+def test_rerun_deletes_staged_duplicates_of_sorted_tracks(tmp_path):
+    # A re-download of an already-sorted track lands in staging and would be
+    # skipped forever — it must be deleted, or staging strands and grows.
+    store = CrateStore()
+    store.upsert_track("u", _track("1").update(status="sorted", genre="techno"))
+    stage = tmp_path / ".staging" / "abc123"
+    stage.mkdir(parents=True)
+    dup = stage / "1.flac"
+    dup.write_bytes(b"\x00")
+    outside = tmp_path / "precious.flac"  # NOT in staging — must never be touched
+    outside.write_bytes(b"\x00")
+
+    def fetch(_url, _settings):
+        return "spotdl", [
+            _track("1").update(file_path=dup),
+            _track("2").update(status="sorted", file_path=outside),
+        ]
+
+    run_crate(
+        "u",
+        Settings(output_dir=tmp_path),
+        store,
+        fetch=fetch,
+        process=lambda t, _s: t.update(status="sorted"),
+    )
+    assert not dup.exists()  # staged duplicate removed
+    assert outside.exists()  # files outside staging are never deleted
 
 
 def test_apply_crate_moves_previewed_and_skips_the_rest(tmp_path):

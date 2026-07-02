@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
+from pathlib import Path
 
 from .config import Settings
 from .download.backends import (
@@ -66,6 +67,18 @@ def run_crate(
     failed_stubs = [t for t in fetched if t.status == "failed" and t.file_path is None]
     downloads = [t for t in fetched if not (t.status == "failed" and t.file_path is None)]
     new_tracks = [t for t in downloads if t.spotify_id not in skip_ids]
+    # A re-downloaded copy of an already-sorted track is a duplicate we'd skip
+    # but never move — left alone it would strand in the staging dir forever
+    # (cleanup refuses non-empty dirs) and grow per re-run. Delete it, but ONLY
+    # from inside staging: never touch files outside dirs this run owns.
+    staging_root = settings.output_dir / ".staging"
+    for track in downloads:
+        if (
+            track.spotify_id in done_ids
+            and track.file_path is not None
+            and staging_root in track.file_path.parents
+        ):
+            track.file_path.unlink(missing_ok=True)
 
     # Only surface a failure for a song we don't already have (this run or a prior
     # sorted run), matched by title so artist-string differences don't false-flag.
@@ -185,6 +198,7 @@ def apply_crate(
     settings = settings.with_(aliases=store.aliases())
     store.upsert_run(run_url)
     results: list[Track] = []
+    source_dirs: set[Path] = set()
     for track in store.tracks(run_url):
         with _APPLY_LOCK:
             if store.status_of(run_url, track.spotify_id) != "previewed":
@@ -192,11 +206,26 @@ def apply_crate(
                 if on_update:
                     on_update(track)
                 continue
+            if track.file_path is not None:
+                source_dirs.add(track.file_path.parent)
             done = apply(track, settings)
             store.upsert_track(run_url, done)
         if on_update:
             on_update(done)
         results.append(done)
     # Applying moves the last files out of the run's staging dir — drop it.
+    # Also sweep the actual source dirs we emptied, but only staging dirs: if
+    # the output_dir pref changed between preview and apply, cleanup_staging
+    # computes the staging path under the NEW root while the files came from
+    # the old one. Never rmdir a non-staging dir (a local source's folder is
+    # the user's own, even when apply empties it).
+    for parent in source_dirs:
+        if ".staging" not in parent.parts:
+            continue
+        for directory in (parent, parent.parent):
+            try:
+                directory.rmdir()
+            except OSError:
+                break
     cleanup_staging(run_url, settings)
     return "apply", results
