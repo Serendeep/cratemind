@@ -12,7 +12,12 @@ import threading
 from collections.abc import Callable
 
 from .config import Settings
-from .download.backends import BackendUnavailable, fetch_playlist, normalize_title
+from .download.backends import (
+    BackendUnavailable,
+    cleanup_staging,
+    fetch_playlist,
+    normalize_title,
+)
 from .download.base import Track
 from .manifest import TrackEntry
 from .pipeline import apply_previewed, place_from_manifest, process_track
@@ -132,6 +137,9 @@ def run_crate(
         results.append(track)
         if on_update:
             on_update(track)
+    # A fully sorted run leaves its staging dir empty — drop it. A previewed
+    # run's files are still inside, so this refuses (by design) until Apply.
+    cleanup_staging(playlist_url, settings)
     return backend_name, results
 
 
@@ -172,4 +180,6 @@ def apply_crate(
         if on_update:
             on_update(done)
         results.append(done)
+    # Applying moves the last files out of the run's staging dir — drop it.
+    cleanup_staging(run_url, settings)
     return "apply", results

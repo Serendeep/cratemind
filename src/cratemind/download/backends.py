@@ -15,11 +15,36 @@ import subprocess
 from pathlib import Path
 
 from ..config import Settings
+from ..store.db import run_id_for
 from .base import DownloadBackend, Track
 from .tags import stable_id, track_from_file
 
 AUDIO_SUFFIXES = {".flac", ".mp3", ".m4a", ".opus", ".ogg", ".wav"}
 TRACKLIST_FILE = ".cratemind-tracklist.spotdl"
+STAGING_ROOT = ".staging"
+
+
+def staging_dir(run_url: str, settings: Settings) -> Path:
+    """Per-run download staging area.
+
+    Downloads used to land in the output root, which every run harvested
+    wholesale — safe only while every run moved its files out immediately.
+    A previewed run's files wait for Apply, so each run gets its own dir.
+    The name reuses the store's deterministic run id: a crashed run's
+    leftovers are reclaimed by the next run of the same crate.
+    """
+    return settings.output_dir / STAGING_ROOT / run_id_for(run_url)
+
+
+def cleanup_staging(run_url: str, settings: Settings) -> None:
+    """Drop a run's staging dir (and the staging root) once empty. Best-effort:
+    a previewed run's dir still holds files, so its rmdir simply refuses."""
+    stage = staging_dir(run_url, settings)
+    for directory in (stage, stage.parent):
+        try:
+            directory.rmdir()
+        except OSError:
+            return
 
 
 def normalize_title(title: str | None) -> str:
@@ -232,9 +257,10 @@ def fetch_playlist(
         raise BackendUnavailable("not a Spotify playlist URL")
     ran_name: str | None = None
     install_error: BackendUnavailable | None = None
+    stage = staging_dir(playlist_url, settings)
     for backend in select_backends(settings.audio_format):
         try:
-            tracks = backend.fetch(playlist_url, settings.output_dir)
+            tracks = backend.fetch(playlist_url, stage)
         except BackendUnavailable as error:
             install_error = error  # this backend's CLI isn't installed or failed
             continue

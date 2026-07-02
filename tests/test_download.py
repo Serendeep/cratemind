@@ -77,14 +77,15 @@ def test_missing_cli_raises_backend_unavailable(monkeypatch):
         SpotdlBackend("mp3").fetch(URL, Path("/tmp/cm-nope"))
 
 
-def test_fetch_playlist_downloads_into_output_root(monkeypatch, tmp_path):
+def test_fetch_playlist_downloads_into_per_run_staging(monkeypatch, tmp_path):
     settings = Settings(output_dir=tmp_path, audio_format="flac")
-    created = tmp_path / "song.mp3"  # downloads land in the output root, not a cache
+    stage = backends.staging_dir(URL, settings)
 
     def fake_run(command):
         if command[0] == "spotiflac":
             raise BackendUnavailable("spotiflac missing")
-        created.write_bytes(b"\x00")
+        stage.mkdir(parents=True, exist_ok=True)
+        (stage / "song.mp3").write_bytes(b"\x00")
 
     monkeypatch.setattr(backends, "_run", fake_run)
     monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "Song", "artist": "X", "genre": None})
@@ -92,6 +93,40 @@ def test_fetch_playlist_downloads_into_output_root(monkeypatch, tmp_path):
     name, tracks, _name = fetch_playlist(URL, settings)
     assert name == "spotdl"
     assert len(tracks) == 1 and tracks[0].source == "spotdl"
+    assert tracks[0].file_path.is_relative_to(stage)  # staged, not in the root
+
+
+def test_fetch_playlist_ignores_other_runs_staged_files(monkeypatch, tmp_path):
+    # A pending preview of another crate must be invisible to this run —
+    # harvesting it wholesale is how a preview's files used to get moved.
+    settings = Settings(output_dir=tmp_path, audio_format="mp3")
+    other = backends.staging_dir("https://open.spotify.com/playlist/other", settings)
+    other.mkdir(parents=True)
+    (other / "previewed.mp3").write_bytes(b"\x00")
+    (tmp_path / "legacy-root-file.mp3").write_bytes(b"\x00")  # pre-staging leftover
+
+    monkeypatch.setattr(backends, "_run", lambda _cmd: None)  # this run downloads nothing
+    _name, tracks, _pl = fetch_playlist(URL, settings)
+    assert tracks == []  # neither the other run's preview nor root leftovers
+
+
+def test_staging_dir_is_stable_per_run_url(tmp_path):
+    settings = Settings(output_dir=tmp_path)
+    assert backends.staging_dir(URL, settings) == backends.staging_dir(URL, settings)
+    assert backends.staging_dir(URL, settings) != backends.staging_dir("other", settings)
+
+
+def test_cleanup_staging_removes_only_empty_dirs(tmp_path):
+    settings = Settings(output_dir=tmp_path)
+    stage = backends.staging_dir(URL, settings)
+    stage.mkdir(parents=True)
+    (stage / "waiting.mp3").write_bytes(b"\x00")
+    backends.cleanup_staging(URL, settings)
+    assert stage.exists()  # previewed files still inside — refused
+    (stage / "waiting.mp3").unlink()
+    backends.cleanup_staging(URL, settings)
+    assert not stage.exists()
+    assert not stage.parent.exists()  # .staging root dropped with the last run
 
 
 def test_fetch_playlist_falls_through_when_backend_downloads_nothing(monkeypatch, tmp_path):
@@ -103,10 +138,13 @@ def test_fetch_playlist_falls_through_when_backend_downloads_nothing(monkeypatch
         lambda _fmt: [backends.SpotiFlacBackend(), backends.SpotdlBackend("mp3")],
     )
 
+    stage = backends.staging_dir(URL, settings)
+
     def fake_run(command):
         if command[0] == "spotiflac":
             return  # "succeeds" with zero downloads
-        (tmp_path / "song.mp3").write_bytes(b"\x00")
+        stage.mkdir(parents=True, exist_ok=True)
+        (stage / "song.mp3").write_bytes(b"\x00")
 
     monkeypatch.setattr(backends, "_run", fake_run)
     monkeypatch.setattr(tags, "read_tags", lambda _p: {"title": "S", "artist": "A", "genre": None})

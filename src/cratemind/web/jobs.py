@@ -66,7 +66,14 @@ class JobManager:
         *,
         runner: Runner = run_crate,
         runner_kwargs: dict[str, object] | None = None,
+        allow_move_local: bool = False,
     ) -> Job:
+        # Safety seam: local sources always preview unless the caller explicitly
+        # allowed moving (the run form does, only when the user unticks the
+        # preview box on that submit). Living here — not in any route — means
+        # every entry point inherits it, including the crates-list re-run.
+        if playlist_url.startswith("local:") and not allow_move_local and not settings.dry_run:
+            settings = settings.with_(dry_run=True)
         job = Job(id=uuid.uuid4().hex[:12], playlist_url=playlist_url)
         self._jobs[job.id] = job
 
@@ -85,17 +92,18 @@ class JobManager:
             prior_sorted = sum(1 for t in store.tracks(playlist_url) if t.status == "sorted")
 
             def monitor() -> None:
-                # Count unsorted files in the output root (sorted ones live in
-                # subfolders) so the UI shows live download progress. Root-only
-                # avoids counting a prior run's already-sorted tracks. The total
+                # Count this run's unsorted downloads so the UI shows live
+                # progress. Scoped to the run's own staging dir — the shared
+                # output root may hold OTHER runs' previewed files. The total
                 # comes from spotdl's tracklist save-file (0 until it's written,
                 # and for SpotiFLAC which writes none) to make the bar determinate.
-                from ..download.backends import expected_count, staging_files
+                from ..download.backends import expected_count, staging_dir, staging_files
 
+                stage = staging_dir(playlist_url, settings)
                 while not stop.is_set():
-                    raw_total = expected_count(settings.output_dir)
+                    raw_total = expected_count(stage)
                     with job.lock:
-                        job.downloaded = len(staging_files(settings.output_dir))
+                        job.downloaded = len(staging_files(stage))
                         # Keep the last-known total: the save-file is deleted when
                         # the download finishes, and dropping back to 0 would flash
                         # the bar to the indeterminate state before tracks appear.
@@ -103,7 +111,9 @@ class JobManager:
                             job.total_expected = max(raw_total - prior_sorted, 0)
                     stop.wait(2)
 
-            threading.Thread(target=monitor, daemon=True).start()
+            # A local source downloads nothing — the bar would be meaningless.
+            if not playlist_url.startswith("local:"):
+                threading.Thread(target=monitor, daemon=True).start()
             try:
                 backend, _ = runner(
                     playlist_url, settings, store, on_update=on_update, **(runner_kwargs or {})

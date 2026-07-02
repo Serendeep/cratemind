@@ -50,3 +50,43 @@ def test_get_returns_started_job():
     manager = _inline()
     job = manager.start("u", Settings(), runner=lambda *_a, **_k: ("spotdl", []))
     assert manager.get(job.id) is job
+
+
+def _capture_dry_run(captured: dict):
+    def runner(_url, settings, _store, *, on_update=None):
+        captured["dry_run"] = settings.dry_run
+        return "local", []
+
+    return runner
+
+
+def test_local_source_is_forced_into_preview():
+    # The safety rule lives at this seam so EVERY route inherits it — including
+    # the crates-list re-run, which never sees the run form's checkbox.
+    captured: dict = {}
+    _inline().start("local:/music/incoming", Settings(), runner=_capture_dry_run(captured))
+    assert captured["dry_run"] is True
+
+
+def test_local_preview_override_is_explicit_only():
+    captured: dict = {}
+    _inline().start(
+        "local:/music/incoming",
+        Settings(),
+        runner=_capture_dry_run(captured),
+        allow_move_local=True,
+    )
+    assert captured["dry_run"] is False
+
+
+def test_playlist_urls_keep_the_callers_dry_run():
+    captured: dict = {}
+    manager = _inline()
+    manager.start("https://open.spotify.com/playlist/x", Settings(), runner=_capture_dry_run(captured))
+    assert captured["dry_run"] is False
+    manager.start(
+        "https://open.spotify.com/playlist/x",
+        Settings(dry_run=True),
+        runner=_capture_dry_run(captured),
+    )
+    assert captured["dry_run"] is True
