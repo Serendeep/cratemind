@@ -37,6 +37,10 @@ class Settings:
     # from the store per run (see runner) — NOT persisted via prefs, which is why
     # it's excluded from prefs.load/save.
     aliases: Mapping[str, str] = field(default_factory=dict)
+    # Preview mode: analyze and compute destinations but move nothing. A per-run
+    # runtime carrier set from the web form — never persisted via prefs, or one
+    # previewed run would silently make every later run a preview.
+    dry_run: bool = False
 
     def __post_init__(self) -> None:
         if self.audio_format not in AUDIO_FORMATS:

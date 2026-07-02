@@ -19,6 +19,14 @@ def test_settings_roundtrip(tmp_path, monkeypatch):
     assert loaded.bucket_width == 10
 
 
+def test_dry_run_is_never_persisted(tmp_path, monkeypatch):
+    # dry_run is a per-run carrier; save_settings runs on every form submit, so
+    # persisting it would silently turn every later run into a preview.
+    monkeypatch.setenv("CRATEMIND_DATA_DIR", str(tmp_path))
+    prefs.save_settings(Settings(output_dir=tmp_path / "music", dry_run=True))
+    assert prefs.load_settings().dry_run is False
+
+
 def test_missing_prefs_returns_defaults(tmp_path, monkeypatch):
     monkeypatch.setenv("CRATEMIND_DATA_DIR", str(tmp_path))
     assert prefs.load_settings().audio_format == "flac"
