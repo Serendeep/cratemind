@@ -18,7 +18,7 @@ from .download.write_tags import write_tags
 from .genre.audio import lookup_audio_genre
 from .genre.deezer import lookup_deezer_genre
 from .genre.resolve import ArtistGenreLookup, AudioGenreLookup, CoarseGenreLookup
-from .organize.sorter import sort_track
+from .organize.sorter import place_file, sort_track
 
 KeyEstimator = Callable[[Path], str]
 TagWriter = Callable[..., None]
@@ -65,6 +65,37 @@ def process_track(
     )
     _embed_tags(sorted_track, settings, tag_writer)
     return sorted_track
+
+
+def apply_previewed(
+    track: Track,
+    settings: Settings,
+    *,
+    tag_writer: TagWriter = write_tags,
+) -> Track:
+    """Perform the move a dry run proposed: place the file, then embed tags.
+
+    The destination folder is re-derived from the stored `proposed_path` —
+    never from current settings — so a prefs change between preview and apply
+    can affect tag style but never where the file lands. `place_file` re-runs
+    the unique-name check, so a collision that appeared since the preview still
+    gets a suffix. A vanished source degrades to "failed"; the caller decides
+    whether that's terminal (idempotency lives in the apply runner, which skips
+    anything no longer "previewed").
+    """
+    if track.proposed_path is None or track.file_path is None:
+        return track.update(status="failed")
+    if track.file_path == track.proposed_path:
+        # Previewed in place — nothing to move.
+        done = track.update(status="sorted", proposed_path=None)
+        _embed_tags(done, settings, tag_writer)
+        return done
+    if not track.file_path.exists():
+        return track.update(status="failed")
+    dest = place_file(track.file_path, track.proposed_path.parent)
+    done = track.update(file_path=dest, proposed_path=None, status="sorted")
+    _embed_tags(done, settings, tag_writer)
+    return done
 
 
 def place_from_manifest(

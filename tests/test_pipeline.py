@@ -3,7 +3,7 @@ from pathlib import Path
 from cratemind.config import Settings
 from cratemind.download.base import Track
 from cratemind.organize.sorter import sort_track
-from cratemind.pipeline import process_track
+from cratemind.pipeline import apply_previewed, process_track
 
 
 def _make_file(tmp_path: Path, name: str = "song.flac") -> Path:
@@ -168,6 +168,88 @@ def test_dry_run_respects_the_escape_guard(tmp_path):
     previewed = sort_track(track, settings)
     assert previewed.proposed_path.is_relative_to(out.resolve())  # never escapes
     assert "unsorted" in previewed.proposed_path.parts
+
+
+def test_apply_previewed_moves_and_tags_at_the_proposed_path(tmp_path):
+    out = tmp_path / "out"
+    src = _make_file(tmp_path)
+    track = Track(
+        spotify_id="1", title="x", artist="A", genre="synthwave", key="8A",
+        bpm=118, bpm_bucket="112-119", file_path=src,
+    )
+    previewed = sort_track(track, Settings(output_dir=out, dry_run=True))
+    calls: list[Path] = []
+    done = apply_previewed(
+        previewed, Settings(output_dir=out), tag_writer=lambda p, **kw: calls.append(p)
+    )
+    assert done.status == "sorted"
+    assert done.file_path == out / "synthwave" / "112-119" / "song.flac"
+    assert done.file_path.exists() and not src.exists()
+    assert done.proposed_path is None
+    assert calls == [done.file_path]  # tags written on apply, at the final path
+
+
+def test_apply_previewed_ignores_settings_changes_for_the_destination(tmp_path):
+    # The preview is the contract: a changed output_dir between preview and
+    # apply must not redirect the move.
+    old_out, new_out = tmp_path / "old", tmp_path / "new"
+    src = _make_file(tmp_path)
+    track = Track(
+        spotify_id="1", title="x", artist="A", genre="house",
+        bpm=124, bpm_bucket="120-127", file_path=src,
+    )
+    previewed = sort_track(track, Settings(output_dir=old_out, dry_run=True))
+    done = apply_previewed(
+        previewed, Settings(output_dir=new_out), tag_writer=lambda p, **kw: None
+    )
+    assert done.file_path.is_relative_to(old_out)
+    assert not new_out.exists()
+
+
+def test_apply_previewed_suffixes_a_collision_that_appeared_after_preview(tmp_path):
+    out = tmp_path / "out"
+    src = _make_file(tmp_path, "a.flac")
+    track = Track(
+        spotify_id="1", title="x", artist="y", genre="house",
+        bpm=124, bpm_bucket="120-127", file_path=src,
+    )
+    previewed = sort_track(track, Settings(output_dir=out, dry_run=True))
+    # Someone else lands a file at the previewed name before Apply runs.
+    previewed.proposed_path.parent.mkdir(parents=True)
+    previewed.proposed_path.write_bytes(b"\x00")
+    done = apply_previewed(previewed, Settings(output_dir=out), tag_writer=lambda p, **kw: None)
+    assert done.status == "sorted"
+    assert done.file_path.name == "a (1).flac"
+
+
+def test_apply_previewed_missing_source_degrades_to_failed(tmp_path):
+    out = tmp_path / "out"
+    src = _make_file(tmp_path)
+    track = Track(
+        spotify_id="1", title="x", artist="A", genre="house",
+        bpm=124, bpm_bucket="120-127", file_path=src,
+    )
+    previewed = sort_track(track, Settings(output_dir=out, dry_run=True))
+    src.unlink()  # user deleted it between preview and apply
+    done = apply_previewed(previewed, Settings(output_dir=out), tag_writer=lambda p, **kw: None)
+    assert done.status == "failed"
+
+
+def test_apply_previewed_in_place_is_a_noop_move(tmp_path):
+    out = tmp_path / "out"
+    dest_dir = out / "house" / "120-127"
+    dest_dir.mkdir(parents=True)
+    src = _make_file(dest_dir, "a.flac")
+    track = Track(
+        spotify_id="1", title="x", artist="y", genre="house",
+        bpm=124, bpm_bucket="120-127", file_path=src,
+    )
+    previewed = sort_track(track, Settings(output_dir=out, dry_run=True))
+    assert previewed.proposed_path == src
+    done = apply_previewed(previewed, Settings(output_dir=out), tag_writer=lambda p, **kw: None)
+    assert done.status == "sorted"
+    assert done.file_path == src and src.exists()
+    assert not (dest_dir / "a (1).flac").exists()
 
 
 def test_process_track_skips_deezer_when_online_genre_off(tmp_path):
