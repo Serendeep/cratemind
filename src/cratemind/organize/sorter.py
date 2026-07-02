@@ -49,6 +49,18 @@ def destination_dir(track: Track, settings: Settings, genre: str | None) -> Path
     return settings.output_dir / relative
 
 
+def place_file(source: Path, folder: Path) -> Path:
+    """Reserve a unique name in `folder` and move `source` there.
+
+    The one place files physically move — sort and apply both route through it.
+    """
+    folder.mkdir(parents=True, exist_ok=True)
+    with _PLACE_LOCK:
+        dest = unique_path(folder / source.name)
+        _ = shutil.move(str(source), str(dest))
+    return dest
+
+
 def sort_track(
     track: Track,
     settings: Settings,
@@ -71,8 +83,18 @@ def sort_track(
     root = settings.output_dir.resolve()
     if not folder.resolve().is_relative_to(root):
         folder = root / UNSORTED
-    folder.mkdir(parents=True, exist_ok=True)
-    with _PLACE_LOCK:
-        dest = unique_path(folder / track.file_path.name)
-        _ = shutil.move(str(track.file_path), str(dest))
+    # Already in place (local sorting can scan files that sit at their computed
+    # destination): without this, unique_path would treat the file as its own
+    # collision and rename it to "song (1).ext".
+    if folder / track.file_path.name == track.file_path:
+        if settings.dry_run:
+            return track.update(genre=genre, proposed_path=track.file_path, status="previewed")
+        return track.update(genre=genre, status="sorted")
+    if settings.dry_run:
+        # Compute the destination without touching the filesystem. unique_path
+        # only reads, so running it here makes the preview show the suffixed
+        # name a real sort would pick against files already on disk.
+        proposed = unique_path(folder / track.file_path.name)
+        return track.update(genre=genre, proposed_path=proposed, status="previewed")
+    dest = place_file(track.file_path, folder)
     return track.update(genre=genre, file_path=dest, status="sorted")

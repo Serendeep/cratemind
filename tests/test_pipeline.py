@@ -111,6 +111,65 @@ def test_name_collision_gets_suffix(tmp_path):
     assert result.file_path.name == "a (1).flac"
 
 
+def test_dry_run_touches_nothing_and_proposes_the_real_destination(tmp_path):
+    out = tmp_path / "out"
+    src = _make_file(tmp_path)
+    track = Track(
+        spotify_id="1", title="x", artist="A", genre="synthwave",
+        bpm=118, bpm_bucket="112-119", file_path=src,
+    )
+    previewed = sort_track(track, Settings(output_dir=out, dry_run=True))
+    assert previewed.status == "previewed"
+    assert previewed.proposed_path == out / "synthwave" / "112-119" / "song.flac"
+    assert previewed.file_path == src and src.exists()  # nothing moved
+    assert not out.exists()  # not even a mkdir
+    # The same track sorted for real lands exactly where the preview said.
+    sorted_track = sort_track(track, Settings(output_dir=out))
+    assert sorted_track.file_path == previewed.proposed_path
+
+
+def test_dry_run_preview_shows_collision_suffix(tmp_path):
+    out = tmp_path / "out"
+    settings = Settings(output_dir=out)
+    common = {"genre": "house", "bpm": 124, "bpm_bucket": "120-127"}
+    first = Track(spotify_id="1", title="x", artist="y", file_path=_make_file(tmp_path, "a.flac"), **common)
+    sort_track(first, settings)  # a.flac now on disk at the destination
+    second = Track(spotify_id="2", title="x", artist="y", file_path=_make_file(tmp_path, "a.flac"), **common)
+    previewed = sort_track(second, settings.with_(dry_run=True))
+    assert previewed.proposed_path.name == "a (1).flac"
+
+
+def test_already_at_destination_is_a_noop_not_a_rename(tmp_path):
+    out = tmp_path / "out"
+    dest_dir = out / "house" / "120-127"
+    dest_dir.mkdir(parents=True)
+    src = _make_file(dest_dir, "a.flac")  # file already sits at its destination
+    track = Track(
+        spotify_id="1", title="x", artist="y", genre="house",
+        bpm=124, bpm_bucket="120-127", file_path=src,
+    )
+    result = sort_track(track, Settings(output_dir=out))
+    assert result.status == "sorted"
+    assert result.file_path == src and src.exists()
+    assert not (dest_dir / "a (1).flac").exists()  # no self-collision rename
+    previewed = sort_track(track, Settings(output_dir=out, dry_run=True))
+    assert previewed.status == "previewed"
+    assert previewed.proposed_path == src
+
+
+def test_dry_run_respects_the_escape_guard(tmp_path):
+    out = tmp_path / "out"
+    src = _make_file(tmp_path)
+    track = Track(
+        spotify_id="1", title="x", artist="y", genre="techno",
+        bpm=130, bpm_bucket="128-135", file_path=src,
+    )
+    settings = Settings(output_dir=out, folder_template="../{genre}/", dry_run=True)
+    previewed = sort_track(track, settings)
+    assert previewed.proposed_path.is_relative_to(out.resolve())  # never escapes
+    assert "unsorted" in previewed.proposed_path.parts
+
+
 def test_process_track_skips_deezer_when_online_genre_off(tmp_path):
     src = _make_file(tmp_path, "t.flac")
     called: list[tuple[str, str]] = []
