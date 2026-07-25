@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.5.0](https://github.com/Serendeep/cratemind/compare/v0.4.0...v0.5.0) (2026-07-25)
+
+
+### Features
+
+* add per-run dry_run setting as a runtime carrier ([bf83183](https://github.com/Serendeep/cratemind/commit/bf83183126130367e5012b0f23d702b09f7f10cb))
+* add preview fields to track and migrate the store schema ([7665fe3](https://github.com/Serendeep/cratemind/commit/7665fe3f1ae1340541a18167e39cf93554a71649))
+* apply a previewed run by moving files to their proposed paths ([cb57695](https://github.com/Serendeep/cratemind/commit/cb57695f79fc22168d022d3bd44b857971fdd8cb))
+* dry-run sort computes destinations without moving files ([ee104e2](https://github.com/Serendeep/cratemind/commit/ee104e24e223de358bff1fc30cfd1616d6880068))
+* preview table with apply, album art, confidence and folder tree ([a6c959a](https://github.com/Serendeep/cratemind/commit/a6c959aab5bbce65337c5438bae9c88b188bfccc))
+* resume previewed runs cheaply and apply them idempotently ([ae1fe65](https://github.com/Serendeep/cratemind/commit/ae1fe6599b6b1aa647c2288d84a13b13b478088a))
+* stage downloads per run and force preview for local sources ([2f389d5](https://github.com/Serendeep/cratemind/commit/2f389d54a0a945d082a0a3dd747f6772db14eca4))
+* surface the genre model confidence per track ([5826990](https://github.com/Serendeep/cratemind/commit/5826990b90bd47839341308683ca2c32cb145de6))
+
+
+### Bug Fixes
+
+* any crate with pending previews re-previews instead of moving ([402f7de](https://github.com/Serendeep/cratemind/commit/402f7de6157ac867e59045cd6795dacf9cec45b6))
+* guard the previewed re-sort loop like a second apply path ([5ab80d5](https://github.com/Serendeep/cratemind/commit/5ab80d5b80dc644cb5ff9f478919356475874768))
+* pre-landing review hardening for art, apply and focus states ([7af0354](https://github.com/Serendeep/cratemind/commit/7af0354569d267e449bb1734477429e4d43cc81a))
+
+
+### Documentation
+
+* add a todos backlog for deferred work ([244ab3a](https://github.com/Serendeep/cratemind/commit/244ab3a0678a06ba195c11ded0f24e774cc4085b))
+* add roadmap and community guides, refresh readme ([748007a](https://github.com/Serendeep/cratemind/commit/748007a5cb71189677829fa8791eac075fb7835d))
+* document the preview flow and check off the roadmap item ([0fb41e8](https://github.com/Serendeep/cratemind/commit/0fb41e845163d512320e213adac0b8523d3bfa3a))
+* drop shipped and unverified claims found in doc review ([a7bcbb5](https://github.com/Serendeep/cratemind/commit/a7bcbb50c9f9ba5394f180a4a7bdeb7207ebccbe))
+* reorganize todos with priorities and add review deferrals ([ae08275](https://github.com/Serendeep/cratemind/commit/ae0827553d8ccc781ca4494d8ab2d276bdaf6959))
+
 ## [0.4.0](https://github.com/Serendeep/cratemind/compare/v0.3.0...v0.4.0) (2026-06-17)
 
 
