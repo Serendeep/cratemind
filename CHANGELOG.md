@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/Serendeep/cratemind/compare/v0.5.0...v0.5.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* **deps:** upgrade msgpack to 1.2.1 ([175b39f](https://github.com/Serendeep/cratemind/commit/175b39f574dcd7ff2efda931a6a1a6ac8e6b6f1c))
+
 ## [0.5.0](https://github.com/Serendeep/cratemind/compare/v0.4.0...v0.5.0) (2026-07-25)
 
 
