@@ -10,7 +10,8 @@
 cratemind downloads each track, detects its BPM, key, and genre, and files it
 into folders like `hard techno/140-147/`. Built for DJs and crate-diggers who
 want a library sorted the way they mix. The audio is downloaded and analyzed on
-your own machine, with no account to sign up for.
+your own machine, with no account to sign up for. The
+[write-up](https://serendeep.tech/work/cratemind/) explains how the analysis works.
 
 <p align="center">
   <img src="docs/images/cratemind-demo.gif" width="760"
