@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/Serendeep/cratemind/compare/v0.5.1...v0.5.2) (2026-10-18)
+
+
+### Documentation
+
+* link the cratemind write-up from the README ([6b1f52a](https://github.com/Serendeep/cratemind/commit/6b1f52a840e3401662ff57fdd1dc8e0bfb86b906))
+
 ## [0.5.1](https://github.com/Serendeep/cratemind/compare/v0.5.0...v0.5.1) (2026-07-25)
 
 
